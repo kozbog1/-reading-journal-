@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reading Journal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playball&family=Elms+Sans&family=Fondamento&family=Archivo+Black&family=Yellowtail&family=Patrick+Hand&family=Caveat:wght@500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <h1 class="auth-title">Reading Journal</h1>
+
+    <div id="authTabs" class="auth-tabs">
+      <button class="auth-tab active" data-auth-tab="login">Bejelentkezés</button>
+      <button class="auth-tab" data-auth-tab="register">Regisztráció</button>
+    </div>
+
+    <form id="loginForm" class="auth-form">
+      <label for="login-email">E-mail cím</label>
+      <input id="login-email" type="email" required placeholder="pelda@email.hu">
+      <label for="login-password">Jelszó</label>
+      <input id="login-password" type="password" required placeholder="••••••••">
+      <button type="submit" class="submit-btn auth-submit">Bejelentkezés</button>
+      <button type="button" id="forgotPasswordLink" class="link-btn auth-link">Elfelejtett jelszó</button>
+    </form>
+
+    <form id="registerForm" class="auth-form" style="display:none;">
+      <label for="register-email">E-mail cím</label>
+      <input id="register-email" type="email" required placeholder="pelda@email.hu">
+      <label for="register-password">Jelszó (min. 6 karakter)</label>
+      <input id="register-password" type="password" required minlength="6" placeholder="••••••••">
+      <button type="submit" class="submit-btn auth-submit">Regisztráció</button>
+    </form>
+
+    <form id="forgotForm" class="auth-form" style="display:none;">
+      <p class="auth-hint">Add meg az e-mail címed, és küldünk egy linket, amivel új jelszót állíthatsz be.</p>
+      <label for="forgot-email">E-mail cím</label>
+      <input id="forgot-email" type="email" required placeholder="pelda@email.hu">
+      <button type="submit" class="submit-btn auth-submit">Visszaállító link küldése</button>
+      <button type="button" id="backToLoginLink" class="link-btn auth-link">Vissza a bejelentkezéshez</button>
+    </form>
+
+    <form id="resetPasswordForm" class="auth-form" style="display:none;">
+      <p class="auth-hint">Add meg az új jelszavad.</p>
+      <label for="reset-password">Új jelszó (min. 6 karakter)</label>
+      <input id="reset-password" type="password" required minlength="6" placeholder="••••••••">
+      <button type="submit" class="submit-btn auth-submit">Jelszó mentése</button>
+    </form>
+
+    <div id="authMessage" class="auth-message"></div>
+  </div>
+</div>
+
+<div id="appScreen" style="display:none;">
+
+  <div class="account-bar">
+    <span id="accountEmail" class="account-email"></span>
+    <button type="button" id="importDataBtn" class="link-btn account-action">Adatok importálása</button>
+    <button type="button" id="logoutBtn" class="link-btn account-action">Kijelentkezés</button>
+  </div>
+
+
+<div class="wrap">
+
+  <div class="theme-picker-vertical" id="themePicker"></div>
+
+  <header>
+    <div>
+      <h1>Reading Journal</h1>
+    </div>
+    <div class="date-today" id="todayDate"></div>
+  </header>
+
+  <div class="stats" id="statsBar">
+    <div class="stat"><span class="stat-num" id="statTotal">–</span><span class="stat-label">Hátralévő könyvek</span></div>
+    <div class="stat"><span class="stat-num" id="statRead">–</span><span class="stat-label">Elolvasva</span></div>
+    <div class="stat"><span class="stat-num" id="statPages">–</span><span class="stat-label">Oldal elolvasva</span></div>
+  </div>
+
+  <div class="activity-section">
+    <div class="activity-header">
+      <div class="activity-title">Olvasáskövető</div>
+      <div class="activity-filters">
+        <div class="month-filter-wrap">
+          <label for="activityYearFilter">Év</label>
+          <select id="activityYearFilter"></select>
+        </div>
+        <div class="month-filter-wrap">
+          <label for="monthFilter">Hónap</label>
+          <select id="monthFilter"></select>
+        </div>
+      </div>
+    </div>
+    <div class="activity-scroll"><div class="activity-grid" id="activityGrid"></div></div>
+  </div>
+
+  <div class="year-filter-row">
+    <div class="year-filter-wrap">
+      <label for="yearFilter" class="year-filter-label">Év</label>
+      <select id="yearFilter"><option value="mind">Minden év</option></select>
+    </div>
+  </div>
+
+  <div class="shelf-section">
+    <div class="shelf-header-row">
+      <div class="shelf-title">A polcod</div>
+      <div class="search-wrap">
+        <input id="searchInput" placeholder="Keresés cím vagy szerző szerint…">
+        <div id="searchResults" class="search-dropdown"></div>
+      </div>
+    </div>
+    <div class="shelf" id="shelf"><div class="shelf-empty">A polc még üres — adj hozzá egy könyvet lent.</div></div>
+  </div>
+
+ <button type="button" id="toggleListBtn" class="collapse-toggle">
+  <span id="toggleListLabel">Könyveim elrejtése</span>
+  <span id="toggleListArrow">▲</span>
+ </button>
+ <div id="listSectionBody">
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-filter="mind">Mind</button>
+    <button class="tab" data-filter="olvasom">Olvasom</button>
+    <button class="tab" data-filter="tervezem">Tervezem</button>
+    <button class="tab" data-filter="elolvasva">Elolvasva</button>
+    <button class="tab" data-filter="eves_terv">Éves terv</button>
+    <button class="tab" data-filter="kivansaglista">Kívánságlista</button>
+    <button class="tab" data-filter="tbr">TBR</button>
+  </div>
+
+  <div class="genre-filter-wrap" id="genreFilterWrap">
+    <label for="genreFilter">Műfaj</label>
+    <select id="genreFilter"><option value="mind">Minden műfaj</option></select>
+  </div>
+
+  <div id="bookList"><div class="loading">Betöltés…</div></div>
+  <div id="planView" style="display:none;"></div>
+  <div id="tbrView" style="display:none;">
+    <div class="tbr-card-wrap" id="tbrDrawWrap">
+      <div class="tbr-draw-tile" id="tbrDrawTile">Húzz egy kártyát</div>
+    </div>
+    <div class="tbr-card-wrap" id="tbrCardWrap" style="display:none;">
+      <div class="tbr-card" id="tbrCard">
+        <div class="tbr-card-face tbr-card-back">
+          <div class="tbr-card-back-pattern">TBR</div>
+          <div class="tbr-card-back-sub">Kattints a megfordításhoz</div>
+        </div>
+        <div class="tbr-card-face tbr-card-front">
+          <div class="tbr-card-icon" id="tbrCardIcon"></div>
+          <div class="tbr-card-text" id="tbrCardText"></div>
+        </div>
+      </div>
+    </div>
+    <div class="tbr-redraw-wrap" id="tbrRedrawWrap" style="display:none;">
+      <button class="submit-btn" id="drawAgainBtn" style="background:var(--ink); color:var(--paper); border-color:var(--ink);">Újat húzok</button>
+    </div>
+  </div>
+  </div><!-- /listSectionBody -->
+
+  <div class="add-section">
+    <h2 id="addSectionHeading">Új könyv hozzáadása</h2>
+    <div class="form-grid">
+      <div class="field"><label for="f-title">Cím</label><input id="f-title" type="text" placeholder="A könyv címe"></div>
+      <div class="field"><label for="f-author">Szerző</label><input id="f-author" type="text" placeholder="Szerző neve"></div>
+      <div class="field"><label for="f-pages">Oldalszám</label><input id="f-pages" type="number" min="1" placeholder="320"></div>
+    </div>
+    <div class="form-grid row2" style="margin-top:10px;">
+      <div class="field">
+        <label for="f-status">Állapot</label>
+        <select id="f-status">
+          <option value="tervezem">Tervezem</option>
+          <option value="olvasom">Olvasom</option>
+          <option value="elolvasva">Elolvasva</option>
+          <option value="eves_terv">Éves terv</option>
+          <option value="kivansaglista">Kívánságlista</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-rating">Értékelés</label>
+        <select id="f-rating">
+          <option value="0">— nincs —</option>
+          <option value="1">★</option>
+          <option value="2">★★</option>
+          <option value="3">★★★</option>
+          <option value="4">★★★★</option>
+          <option value="5">★★★★★</option>
+        </select>
+      </div>
+      <div class="field"><label for="f-date">Befejezés dátuma</label><input id="f-date" type="date"></div>
+    </div>
+
+    <div class="conditional-fields" id="olvasomFields" style="display:none;">
+      <div class="field"><label for="f-pagesread">Eddig elolvasott oldalak</label><input id="f-pagesread" type="number" min="0" placeholder="0"></div>
+    </div>
+
+    <div class="conditional-fields" id="planFields" style="display:none;">
+      <div class="field">
+        <label for="f-planmonth">Tervezett hónap</label>
+        <select id="f-planmonth"></select>
+      </div>
+      <div class="field"><label for="f-planyear">Tervezett év</label><input id="f-planyear" type="number" placeholder="2026"></div>
+    </div>
+
+    <div class="field" style="margin-top:10px;">
+      <label>Műfaj (több is választható)</label>
+      <div class="genre-checks" id="genreChecks"></div>
+    </div>
+
+    <div class="form-grid" style="margin-top:10px;">
+      <textarea id="f-note" placeholder="Jegyzet vagy kedvenc idézet…"></textarea>
+    </div>
+    <div class="field" style="margin-top:10px;">
+      <label for="f-image">Borító kép</label>
+      <input id="f-image" type="file" accept="image/*">
+      <img id="f-image-preview" alt="Előnézet" style="display:none; margin-top:8px; width:70px; height:auto; border-radius:3px; box-shadow:0 3px 6px rgba(0,0,0,0.3);">
+    </div>
+    <button class="submit-btn" id="addBtn">Hozzáadás a naplóhoz</button>
+    <button type="button" id="cancelEditBtn" class="link-btn" style="display:none; color:var(--paper); text-decoration:underline; margin-left:14px;">Mégse</button>
+  </div>
+
+</div>
+
+  <div id="importModal" class="import-modal" style="display:none;">
+    <div class="import-modal-card">
+      <h2>Adatok importálása a régi verzióból</h2>
+      <p class="auth-hint">
+        Tölts fel egy korábban exportált JSON fájlt (a régi Reading Journal
+        "Adatok exportálása" gombjával készült), és az itteni könyveid és
+        olvasási naplód importálódnak a fiókodba.
+      </p>
+      <input type="file" id="importFileInput" accept="application/json">
+      <div id="importStatus" class="auth-message"></div>
+      <div class="import-modal-actions">
+        <button type="button" id="importCloseBtn" class="link-btn">Bezárás</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toastContainer" class="toast-container"></div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
