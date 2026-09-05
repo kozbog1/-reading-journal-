@@ -80,6 +80,17 @@
     <div class="date-today" id="todayDate"></div>
   </header>
 
+<div class="stats-year-row">
+    <div class="stats-year-select-wrap">
+      <label for="statsYearFilter">Év</label>
+      <select id="statsYearFilter"></select>
+    </div>
+    <div class="stats" id="statsYearBar" style="grid-template-columns:repeat(2,1fr);">
+      <div class="stat"><span class="stat-num" id="statYearRead">–</span><span class="stat-label">Elolvasva</span></div>
+      <div class="stat"><span class="stat-num" id="statYearPages">–</span><span class="stat-label">Oldal elolvasva</span></div>
+    </div>
+  </div>
+
   <div class="stats" id="statsBar">
     <div class="stat"><span class="stat-num" id="statTotal">–</span><span class="stat-label">Hátralévő könyvek</span></div>
     <div class="stat"><span class="stat-num" id="statRead">–</span><span class="stat-label">Elolvasva</span></div>

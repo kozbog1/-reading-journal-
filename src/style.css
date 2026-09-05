@@ -588,3 +588,24 @@
 
 .sr-title{cursor:pointer;}
 .sr-title:hover{text-decoration:underline;}
+
+.stats-year-row{margin-bottom:14px;}
+.stats-year-select-wrap{
+  display:flex; align-items:center; gap:8px;
+  margin-bottom:8px;
+}
+.stats-year-select-wrap label{
+  font-family:'JetBrains Mono', monospace;
+  font-size:0.7rem;
+  text-transform:uppercase;
+  color:var(--ink);
+}
+#statsYearFilter{
+  font-family:'JetBrains Mono', monospace;
+  font-size:0.75rem;
+  padding:6px 10px;
+  background:var(--paper);
+  color:var(--ink);
+  border:1px solid var(--ink);
+  border-radius:2px;
+}

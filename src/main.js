@@ -497,6 +497,31 @@ function renderStats() {
   document.getElementById('statPages').textContent = totalPages.toLocaleString('hu-HU');
 }
 
+let currentStatsYear = new Date().getFullYear();
+
+function populateStatsYearFilter() {
+  const sel = document.getElementById('statsYearFilter');
+  const now = new Date().getFullYear();
+  const bookYears = books.map(b => getYear(b.date)).filter(y => y !== null);
+  const rangeYears = [];
+  for (let y = now - 5; y <= now + 1; y++) rangeYears.push(y);
+  const years = [...new Set([...rangeYears, ...bookYears])].sort((a, b) => b - a);
+  sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+  sel.value = currentStatsYear;
+}
+
+function renderStatsYear() {
+  const read = books.filter(b => b.status === 'elolvasva' && getYear(b.date) === currentStatsYear);
+  const totalPages = read.reduce((s, b) => s + (b.pages || 0), 0);
+  document.getElementById('statYearRead').textContent = read.length;
+  document.getElementById('statYearPages').textContent = totalPages.toLocaleString('hu-HU');
+}
+
+document.getElementById('statsYearFilter').addEventListener('change', (e) => {
+  currentStatsYear = parseInt(e.target.value);
+  renderStatsYear();
+});
+
 /* ============ RENDER: ACTIVITY (havi olvasáskövető) ============ */
 function populateMonthFilter() {
   const sel = document.getElementById('monthFilter');
@@ -883,7 +908,9 @@ document.getElementById('tabs').addEventListener('click', (e) => {
 function render() {
   populateYearFilter();
   populateActivityYearFilter();
+  populateStatsYearFilter();
   renderStats();
+  renderStatsYear();
   renderActivity();
   renderShelf();
   updateTabViews();
