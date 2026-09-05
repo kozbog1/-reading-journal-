@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reading Journal</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playball&family=Elms+Sans&family=Fondamento&family=Archivo+Black&family=Yellowtail&family=Patrick+Hand&family=Caveat:wght@500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/src/style.css">
@@ -11,8 +15,9 @@
 <body>
 
 <div id="authScreen" class="auth-screen">
-  <div class="auth-card">
-    <h1 class="auth-title">Reading Journal</h1>
+<div class="auth-card" style="display:flex; align-items:center; gap:14px; justify-content:center;">
+      <img src="/header-icon.png" alt="" style="width:56px; height:56px;">
+      <h1 class="auth-title">Reading Journal</h1>
 
     <div id="authTabs" class="auth-tabs">
       <button class="auth-tab active" data-auth-tab="login">Bejelentkezés</button>
@@ -124,12 +129,13 @@
 
   <div class="tabs" id="tabs">
     <button class="tab active" data-filter="mind">Mind</button>
+    <button class="tab" data-filter="meglevo">Meglévő</button>
     <button class="tab" data-filter="olvasom">Olvasom</button>
-    <button class="tab" data-filter="tervezem">Tervezem</button>
     <button class="tab" data-filter="elolvasva">Elolvasva</button>
     <button class="tab" data-filter="eves_terv">Éves terv</button>
     <button class="tab" data-filter="kivansaglista">Kívánságlista</button>
     <button class="tab" data-filter="tbr">TBR</button>
+    <button class="tab" data-filter="kereso">Kereső</button>
   </div>
 
   <div class="genre-filter-wrap" id="genreFilterWrap">
@@ -161,6 +167,11 @@
   </div>
   </div><!-- /listSectionBody -->
 
+<div id="searchView" style="display:none;">
+  <input id="tabSearchInput" placeholder="Keresés cím vagy szerző szerint…" style="width:100%; max-width:420px; padding:10px 12px; border:1px solid var(--ink); background:var(--paper); color:var(--ink); border-radius:2px; font-family:'Elms Sans', serif; font-size:1rem; margin-bottom:18px;">
+  <div id="tabSearchResults"></div>
+</div>
+
   <div class="add-section">
     <h2 id="addSectionHeading">Új könyv hozzáadása</h2>
     <div class="form-grid">
@@ -172,7 +183,7 @@
       <div class="field">
         <label for="f-status">Állapot</label>
         <select id="f-status">
-          <option value="tervezem">Tervezem</option>
+          <option value="meglévő">Meglévő</option>
           <option value="olvasom">Olvasom</option>
           <option value="elolvasva">Elolvasva</option>
           <option value="eves_terv">Éves terv</option>

@@ -35,7 +35,7 @@ let pendingImagePreviewUrl = null;
 let tbrLastIndex = -1;
 
 const statusLabels = { olvasom: 'Olvasom', elolvasva: 'Elolvasva', tervezem: 'Tervezem', eves_terv: 'Éves terv', kivansaglista: 'Kívánságlista' };
-const GENRES = ['Romantikus', 'Thriller', 'Krimi', 'Horror', 'Fantasy', 'Sci-fi', 'Ifjúsági', 'Ismeretterjesztő', 'Szépirodalom', 'Történelmi', 'Misztikus', 'Regény', 'Novella', 'Vers'];
+const GENRES = ['Romantikus', 'Thriller', 'Krimi', 'Horror', 'Fantasy', 'Erotikus', 'Sci-fi', 'Ifjúsági', 'Ismeretterjesztő', 'Önfejlesztő', 'Pszichológia', 'Szépirodalom', 'Történelmi', 'Misztikus', 'Regény', 'Novella', 'Vers', 'Memoár', 'Mese'];
 const MONTH_NAMES = ['Január', 'Február', 'Március', 'Április', 'Május', 'Június', 'Július', 'Augusztus', 'Szeptember', 'Október', 'November', 'December'];
 
 const TBR_CARDS = [
@@ -631,15 +631,20 @@ document.getElementById('genreFilter').addEventListener('change', (e) => {
 
 /* ============ RENDER: POLC ============ */
 function renderShelf() {
-  let read = books.filter(b => b.status === 'elolvasva' || b.status === 'olvasom' || b.status === 'tervezem');
+  let read = books.filter(b =>
+    b.status === 'tervezem' ||
+    b.status === 'olvasom' ||
+    b.status === 'elolvasva' ||
+    b.status === 'eves_terv'
+  );
   if (currentYearFilter !== 'mind') {
     read = read.filter(b => b.status !== 'elolvasva' || getYear(b.date) === parseInt(currentYearFilter));
   }
+  const shelfOrder = { olvasom: 0, tervezem: 1, eves_terv: 1, elolvasva: 2 };
+  read = read.slice().sort((a, b) => (shelfOrder[a.status] ?? 1) - (shelfOrder[b.status] ?? 1));
+
   const shelf = document.getElementById('shelf');
-  if (read.length === 0) {
-    shelf.innerHTML = '<div class="shelf-empty">A polc még üres — adj hozzá egy könyvet lent.</div>';
-    return;
-  }
+  
   shelf.innerHTML = read.map(b => {
     const cover = b.coverUrl
       ? `<img src="${b.coverUrl}" alt="${escapeHtml(b.title)} borító">`
@@ -784,11 +789,32 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
   if (matches.length === 0) { resultsEl.innerHTML = '<div class="search-empty">Nincs találat.</div>'; return; }
   resultsEl.innerHTML = matches.map(b => `
     <div class="search-result">
-      <div class="sr-title">${escapeHtml(b.title)}</div>
+      <div class="sr-title" data-edit-id="${b.id}">${escapeHtml(b.title)}</div>
       ${b.author ? `<div class="sr-author">${escapeHtml(b.author)}</div>` : ''}
     </div>
   `).join('');
+  resultsEl.querySelectorAll('[data-edit-id]').forEach(el => {
+    el.addEventListener('click', () => startEditBook(el.dataset.editId));
+  });
 });
+
+document.getElementById('tabSearchInput').addEventListener('input', (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  const resultsEl = document.getElementById('tabSearchResults');
+  if (!q) { resultsEl.innerHTML = '<div class="search-empty">Írj be egy keresőszót.</div>'; return; }
+  const matches = books.filter(b => (b.title || '').toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q));
+  if (matches.length === 0) { resultsEl.innerHTML = '<div class="search-empty">Nincs találat.</div>'; return; }
+  resultsEl.innerHTML = matches.map(b => `
+    <div class="search-result">
+      <div class="sr-title" data-edit-id="${b.id}">${escapeHtml(b.title)}</div>
+      ${b.author ? `<div class="sr-author">${escapeHtml(b.author)}</div>` : ''}
+    </div>
+  `).join('');
+  resultsEl.querySelectorAll('[data-edit-id]').forEach(el => {
+    el.addEventListener('click', () => startEditBook(el.dataset.editId));
+  });
+});
+
 document.addEventListener('click', (e) => {
   const wrap = document.querySelector('.search-wrap');
   const resultsEl = document.getElementById('searchResults');
@@ -836,10 +862,12 @@ function updateTabViews() {
   const isList = ['mind', 'olvasom', 'elolvasva', 'tervezem', 'kivansaglista'].includes(currentFilter);
   const isPlan = currentFilter === 'eves_terv';
   const isTbr = currentFilter === 'tbr';
+  const isSearch = currentFilter === 'kereso';
   document.getElementById('bookList').style.display = isList ? 'block' : 'none';
   document.getElementById('genreFilterWrap').style.display = isList ? 'flex' : 'none';
   document.getElementById('planView').style.display = isPlan ? 'block' : 'none';
   document.getElementById('tbrView').style.display = isTbr ? 'block' : 'none';
+  document.getElementById('searchView').style.display = isSearch ? 'block' : 'none';
   if (isList) renderList();
   if (isPlan) renderPlanView();
 }
