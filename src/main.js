@@ -369,8 +369,36 @@ function populateGenreChecks() {
   wrap.innerHTML = GENRES.map(g => `<label class="genre-check"><input type="checkbox" value="${g}"> ${g}</label>`).join('');
 }
 
+function renderSeriesTags() {
+  const wrap = document.getElementById('seriesTags');
+  wrap.innerHTML = pendingSeries.map((s, i) => `
+    <span class="series-tag">${escapeHtml(s)}<button type="button" data-remove-series="${i}">×</button></span>
+  `).join('');
+  wrap.querySelectorAll('[data-remove-series]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pendingSeries.splice(parseInt(btn.dataset.removeSeries), 1);
+      renderSeriesTags();
+    });
+  });
+}
+
+document.getElementById('addSeriesBtn').addEventListener('click', () => {
+  const input = document.getElementById('f-series-input');
+  const val = input.value.trim();
+  if (val && !pendingSeries.includes(val)) {
+    pendingSeries.push(val);
+    renderSeriesTags();
+  }
+  input.value = '';
+  input.focus();
+});
+document.getElementById('f-series-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addSeriesBtn').click(); }
+});
+
 let editingId = null;
 let editingCoverPath = null;
+let pendingSeries = [];
 
 function resetAddForm() {
   document.getElementById('f-title').value = '';
@@ -389,6 +417,8 @@ function resetAddForm() {
   document.getElementById('planFields').style.display = 'none';
   if (pendingImagePreviewUrl) { URL.revokeObjectURL(pendingImagePreviewUrl); pendingImagePreviewUrl = null; }
   pendingImageBlob = null;
+  pendingSeries = [];
+  renderSeriesTags();
   editingId = null;
   editingCoverPath = null;
   document.getElementById('addBtn').textContent = 'Hozzáadás a naplóhoz';
@@ -413,6 +443,8 @@ function startEditBook(id) {
   document.getElementById('f-planyear').value = b.plannedYear || '';
   document.querySelectorAll('#genreChecks input').forEach(c => { c.checked = Array.isArray(b.genres) && b.genres.includes(c.value); });
   pendingImageBlob = null;
+  pendingSeries = Array.isArray(b.series) ? b.series.slice() : [];
+  renderSeriesTags();
   const preview = document.getElementById('f-image-preview');
   if (b.coverUrl) { preview.src = b.coverUrl; preview.style.display = 'block'; }
   else { preview.style.display = 'none'; }
@@ -437,12 +469,13 @@ async function addBook() {
   const plannedMonth = parseInt(document.getElementById('f-planmonth').value) || null;
   const plannedYear = parseInt(document.getElementById('f-planyear').value) || new Date().getFullYear();
   const genres = Array.from(document.querySelectorAll('#genreChecks input:checked')).map(c => c.value);
+  const series = pendingSeries.slice();
 
   if (!title) { showToast('Add meg legalább a könyv címét.', 'error'); return; }
   if (!currentUser) { showToast('Nincs bejelentkezve felhasználó.', 'error'); return; }
 
   const fields = {
-    title, author, pages, status, rating, date, note, genres,
+    title, author, pages, status, rating, date, note, genres,series,
     pagesRead: status === 'olvasom' ? pagesRead : 0,
     plannedMonth: status === 'eves_terv' ? plannedMonth : null,
     plannedYear: status === 'eves_terv' ? plannedYear : null
@@ -722,6 +755,7 @@ function renderList() {
     const noteHtml = b.note ? `<div class="book-note quote">${escapeHtml(b.note)}</div>` : '';
     const dateHtml = b.date ? `<span>${formatDate(b.date)}</span>` : '';
     const genreTags = (b.genres || []).map(g => `<span class="genre-tag">${escapeHtml(g)}</span>`).join(' ');
+    const seriesTags = (b.series || []).map(s => `<span class="genre-tag">📚 ${escapeHtml(s)}</span>`).join(' ');
     const progressHtml = b.status === 'olvasom' ? `
       <div class="progress-row">
         <input type="number" min="0" data-progress-id="${b.id}" value="${b.pagesRead || 0}">
@@ -745,6 +779,7 @@ function renderList() {
           ${dateHtml}
           ${planHtml}
           ${genreTags}
+          ${seriesTags}
         </div>
         ${progressHtml}
         ${noteHtml}
