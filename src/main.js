@@ -714,7 +714,7 @@ function renderShelf() {
     <div class="shelf-book">
       <div class="shelf-stars">${stars}</div>
       <div class="shelf-cover" style="${!b.coverUrl ? `background:${spineColor(b.id)};` : ''}">${cover}</div>
-      <div class="shelf-book-title">${escapeHtml(b.title)}</div>
+      <div class="shelf-book-title" data-edit-id="${b.id}">${escapeHtml(b.title)}</div>
       ${b.author ? `<div class="shelf-book-author">${escapeHtml(b.author)}</div>` : ''}
     </div>`;
   }).join('');
@@ -732,7 +732,9 @@ async function setRating(id, value) {
 }
 document.getElementById('shelf').addEventListener('click', (e) => {
   const star = e.target.closest('.shelf-star');
-  if (star) setRating(star.dataset.bookId, parseInt(star.dataset.rate));
+  if (star) { setRating(star.dataset.bookId, parseInt(star.dataset.rate)); return; }
+  const titleEl = e.target.closest('[data-edit-id]');
+  if (titleEl) startEditBook(titleEl.dataset.editId);
 });
 
 /* ============ RENDER: KÖNYVLISTA ============ */
