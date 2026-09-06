@@ -858,23 +858,6 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
   });
 });
 
-document.getElementById('tabSearchInput').addEventListener('input', (e) => {
-  const q = e.target.value.trim().toLowerCase();
-  const resultsEl = document.getElementById('tabSearchResults');
-  if (!q) { resultsEl.innerHTML = '<div class="search-empty">Írj be egy keresőszót.</div>'; return; }
-  const matches = books.filter(b => (b.title || '').toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q));
-  if (matches.length === 0) { resultsEl.innerHTML = '<div class="search-empty">Nincs találat.</div>'; return; }
-  resultsEl.innerHTML = matches.map(b => `
-    <div class="search-result">
-      <div class="sr-title" data-edit-id="${b.id}">${escapeHtml(b.title)}</div>
-      ${b.author ? `<div class="sr-author">${escapeHtml(b.author)}</div>` : ''}
-    </div>
-  `).join('');
-  resultsEl.querySelectorAll('[data-edit-id]').forEach(el => {
-    el.addEventListener('click', () => startEditBook(el.dataset.editId));
-  });
-});
-
 document.addEventListener('click', (e) => {
   const wrap = document.querySelector('.search-wrap');
   const resultsEl = document.getElementById('searchResults');
@@ -918,19 +901,19 @@ document.getElementById('tbrCard').addEventListener('click', (e) => {
 });
 
 /* ============ FÜLEK ============ */
+
 function updateTabViews() {
   const isList = ['mind', 'olvasom', 'elolvasva', 'tervezem', 'kivansaglista'].includes(currentFilter);
   const isPlan = currentFilter === 'eves_terv';
   const isTbr = currentFilter === 'tbr';
-  const isSearch = currentFilter === 'kereso';
   document.getElementById('bookList').style.display = isList ? 'block' : 'none';
   document.getElementById('genreFilterWrap').style.display = isList ? 'flex' : 'none';
   document.getElementById('planView').style.display = isPlan ? 'block' : 'none';
   document.getElementById('tbrView').style.display = isTbr ? 'block' : 'none';
-  document.getElementById('searchView').style.display = isSearch ? 'block' : 'none';
   if (isList) renderList();
   if (isPlan) renderPlanView();
 }
+
 document.getElementById('tabs').addEventListener('click', (e) => {
   if (e.target.classList.contains('tab')) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
