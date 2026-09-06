@@ -698,11 +698,12 @@ function renderShelf() {
   if (currentYearFilter !== 'mind') {
     read = read.filter(b => b.status !== 'elolvasva' || getYear(b.date) === parseInt(currentYearFilter));
   }
-  if (shelfSearchQuery) {
-    read = read.filter(b =>
-      (b.title || '').toLowerCase().includes(shelfSearchQuery) ||
-      (b.author || '').toLowerCase().includes(shelfSearchQuery)
-    );
+if (shelfSearchQuery) {
+    read = read.filter(b => {
+      const title = (b.title || '').toLowerCase().replace(/\s+/g, ' ');
+      const author = (b.author || '').toLowerCase().replace(/\s+/g, ' ');
+      return title.includes(shelfSearchQuery) || author.includes(shelfSearchQuery);
+    });
   }
   const shelfOrder = { olvasom: 0, tervezem: 1, eves_terv: 1, elolvasva: 2 };
   read = read.slice().sort((a, b) => (shelfOrder[a.status] ?? 1) - (shelfOrder[b.status] ?? 1));
@@ -850,7 +851,7 @@ function renderPlanView() {
 /* ============ RENDER: KERESÉS ============ */
 let shelfSearchQuery = '';
 document.getElementById('searchInput').addEventListener('input', (e) => {
-  shelfSearchQuery = e.target.value.trim().toLowerCase();
+  shelfSearchQuery = e.target.value.trim().toLowerCase().replace(/\s+/g, ' ');
   renderShelf();
 });
 
