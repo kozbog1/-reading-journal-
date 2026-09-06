@@ -698,6 +698,12 @@ function renderShelf() {
   if (currentYearFilter !== 'mind') {
     read = read.filter(b => b.status !== 'elolvasva' || getYear(b.date) === parseInt(currentYearFilter));
   }
+  if (shelfSearchQuery) {
+    read = read.filter(b =>
+      (b.title || '').toLowerCase().includes(shelfSearchQuery) ||
+      (b.author || '').toLowerCase().includes(shelfSearchQuery)
+    );
+  }
   const shelfOrder = { olvasom: 0, tervezem: 1, eves_terv: 1, elolvasva: 2 };
   read = read.slice().sort((a, b) => (shelfOrder[a.status] ?? 1) - (shelfOrder[b.status] ?? 1));
 
@@ -842,22 +848,10 @@ function renderPlanView() {
 }
 
 /* ============ RENDER: KERESÉS ============ */
+let shelfSearchQuery = '';
 document.getElementById('searchInput').addEventListener('input', (e) => {
-  const q = e.target.value.trim().toLowerCase();
-  const resultsEl = document.getElementById('searchResults');
-  if (!q) { resultsEl.classList.remove('visible'); resultsEl.innerHTML = ''; return; }
-  const matches = books.filter(b => (b.title || '').toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q));
-  resultsEl.classList.add('visible');
-  if (matches.length === 0) { resultsEl.innerHTML = '<div class="search-empty">Nincs találat.</div>'; return; }
-  resultsEl.innerHTML = matches.map(b => `
-    <div class="search-result">
-      <div class="sr-title" data-edit-id="${b.id}">${escapeHtml(b.title)}</div>
-      ${b.author ? `<div class="sr-author">${escapeHtml(b.author)}</div>` : ''}
-    </div>
-  `).join('');
-  resultsEl.querySelectorAll('[data-edit-id]').forEach(el => {
-    el.addEventListener('click', () => startEditBook(el.dataset.editId));
-  });
+  shelfSearchQuery = e.target.value.trim().toLowerCase();
+  renderShelf();
 });
 
 document.addEventListener('click', (e) => {
