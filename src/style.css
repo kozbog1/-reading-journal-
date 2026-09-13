@@ -155,7 +155,7 @@
     gap:4px;
     width:100%;
   }
-  
+
 .activity-day{
   width:24px; height:24px;
   border-radius:3px;
@@ -600,23 +600,29 @@
 
 .stats-year-row{margin-bottom:14px;}
 .stats-year-select-wrap{
-  display:flex; align-items:center; gap:8px;
+  display:inline-flex; align-items:center; gap:8px;
   margin-bottom:8px;
+  width:fit-content;
 }
+
 .stats-year-select-wrap label{
   font-family:'JetBrains Mono', monospace;
   font-size:0.7rem;
   text-transform:uppercase;
   color:var(--ink);
 }
+
 #statsYearFilter{
   font-family:'JetBrains Mono', monospace;
   font-size:0.75rem;
-  padding:6px 10px;
+  padding:6px 8px;
   background:var(--paper);
   color:var(--ink);
   border:1px solid var(--ink);
   border-radius:2px;
+  width:auto;
+  min-width:70px;
+  max-width:90px;
 }
 
 .series-tag{
