@@ -155,14 +155,23 @@
     gap:4px;
     width:100%;
   }
-  .activity-day{
-    width:20px; height:20px;
-    border-radius:3px;
-    background:var(--activity-empty);
-    border:1px solid var(--ink);
-    cursor:pointer;
-    transition:transform 0.1s ease;
-  }
+  
+.activity-day{
+  width:24px; height:24px;
+  border-radius:3px;
+  background:var(--activity-empty);
+  border:1px solid var(--ink);
+  cursor:pointer;
+  transition:transform 0.1s ease;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:'JetBrains Mono', monospace;
+  font-size:0.6rem;
+  color:var(--ink);
+  user-select:none;
+}
+
   .activity-day:hover{transform:scale(1.18);}
   .activity-day.light{background:var(--activity-light);}
   .activity-day.mid{background:var(--activity-mid);}

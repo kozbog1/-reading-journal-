@@ -580,6 +580,7 @@ function classifyPages(p) {
   if (p >= 36) return 'mid';
   return 'light';
 }
+
 function renderActivity() {
   const grid = document.getElementById('activityGrid');
   const year = activityYear();
@@ -591,10 +592,11 @@ function renderActivity() {
     const pages = readingLog[dateStr];
     let cls = '';
     if (pages !== undefined && pages !== null) cls = classifyPages(pages);
-    html += `<div class="activity-day ${cls}" data-date="${dateStr}" title="${d}. nap${pages !== undefined ? ' — ' + pages + ' oldal' : ''}"></div>`;
+    html += `<div class="activity-day ${cls}" data-date="${dateStr}" title="${d}. nap${pages !== undefined ? ' — ' + pages + ' oldal' : ''}">${d}</div>`;
   }
   grid.innerHTML = html;
 }
+
 function closeActivityPopover() {
   const existing = document.getElementById('activityPopover');
   if (existing) existing.remove();
