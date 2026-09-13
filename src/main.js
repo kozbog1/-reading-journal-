@@ -522,7 +522,7 @@ document.getElementById('addBtn').addEventListener('click', addBook);
 
 /* ============ RENDER: STATS ============ */
 function renderStats() {
-  const remaining = books.filter(b => b.status === 'tervezem' || b.status === 'olvasom').length;
+  const remaining = books.filter(b => b.status === 'tervezem').length;
   const read = books.filter(b => b.status === 'elolvasva');
   const totalPages = read.reduce((s, b) => s + (b.pages || 0), 0);
   document.getElementById('statTotal').textContent = remaining;
