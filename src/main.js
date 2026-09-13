@@ -522,7 +522,7 @@ document.getElementById('addBtn').addEventListener('click', addBook);
 
 /* ============ RENDER: STATS ============ */
 function renderStats() {
-  const remaining = books.filter(b => b.status === 'tervezem').length;
+  const remaining = books.filter(b => b.status === 'tervezem' || b.status === 'olvasom').length;
   const read = books.filter(b => b.status === 'elolvasva');
   const totalPages = read.reduce((s, b) => s + (b.pages || 0), 0);
   document.getElementById('statTotal').textContent = remaining;
@@ -832,20 +832,38 @@ function renderPlanView() {
   if (currentYearFilter !== 'mind') {
     planBooks = planBooks.filter(b => b.plannedYear === parseInt(currentYearFilter));
   }
-  el.innerHTML = MONTH_NAMES.map((name, idx) => {
-    const monthNum = idx + 1;
-    const monthBooks = planBooks.filter(b => b.plannedMonth === monthNum);
-    const totalPages = monthBooks.reduce((s, b) => s + (b.pages || 0), 0);
-    const bookItems = monthBooks.length
-      ? monthBooks.map(b => `<div class="plan-book-item">${escapeHtml(b.title)}${b.author ? ` <span class="pb-author">— ${escapeHtml(b.author)}</span>` : ''}</div>`).join('')
-      : '<div class="plan-empty">Nincs tervezett könyv.</div>';
+
+  const years = currentYearFilter !== 'mind'
+    ? [parseInt(currentYearFilter)]
+    : [...new Set(planBooks.map(b => b.plannedYear).filter(y => y != null))].sort((a, b) => a - b);
+
+  if (years.length === 0) {
+    el.innerHTML = '<div class="plan-empty">Nincs tervezett könyv.</div>';
+    return;
+  }
+
+  el.innerHTML = years.map(year => {
+    const yearBooks = planBooks.filter(b => b.plannedYear === year);
+    const monthsHtml = MONTH_NAMES.map((name, idx) => {
+      const monthNum = idx + 1;
+      const monthBooks = yearBooks.filter(b => b.plannedMonth === monthNum);
+      const totalPages = monthBooks.reduce((s, b) => s + (b.pages || 0), 0);
+      const bookItems = monthBooks.length
+        ? monthBooks.map(b => `<div class="plan-book-item">${escapeHtml(b.title)}${b.author ? ` <span class="pb-author">— ${escapeHtml(b.author)}</span>` : ''}</div>`).join('')
+        : '<div class="plan-empty">Nincs tervezett könyv.</div>';
+      return `
+      <div class="plan-month">
+        <div class="plan-month-header">
+          <span class="plan-month-name">${name}</span>
+          <span class="plan-month-pages">${totalPages} oldal</span>
+        </div>
+        ${bookItems}
+      </div>`;
+    }).join('');
     return `
-    <div class="plan-month">
-      <div class="plan-month-header">
-        <span class="plan-month-name">${name}</span>
-        <span class="plan-month-pages">${totalPages} oldal</span>
-      </div>
-      ${bookItems}
+    <div class="plan-year-block">
+      <div class="plan-year-heading">${year}</div>
+      ${monthsHtml}
     </div>`;
   }).join('');
 }

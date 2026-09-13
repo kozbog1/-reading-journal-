@@ -638,3 +638,13 @@
 
 .shelf-book-title{cursor:pointer;}
 .shelf-book-title:hover{text-decoration:underline;}
+
+.plan-year-block{margin-bottom:30px;}
+.plan-year-heading{
+  font-family:'Playball', cursive;
+  font-size:2rem;
+  color:var(--ink);
+  border-bottom:2px solid var(--ink);
+  padding-bottom:6px;
+  margin-bottom:14px;
+}
