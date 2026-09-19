@@ -15,9 +15,11 @@
 <body>
 
 <div id="authScreen" class="auth-screen">
-<div class="auth-card" style="display:flex; align-items:center; gap:14px; justify-content:center;">
+  <div class="auth-card">
+    <div style="display:flex; align-items:center; gap:14px; justify-content:center; margin-bottom:18px;">
       <img src="/header-icon.png" alt="" style="width:56px; height:56px;">
-      <h1 class="auth-title">Reading Journal</h1>
+      <h1 class="auth-title" style="margin:0;">Reading Journal</h1>
+    </div>
 
     <div id="authTabs" class="auth-tabs">
       <button class="auth-tab active" data-auth-tab="login">Bejelentkezés</button>
@@ -140,7 +142,7 @@
 
   <div class="tabs" id="tabs">
     <button class="tab active" data-filter="mind">Mind</button>
-    <button class="tab" data-filter="meglevo">Meglévő</button>
+    <button class="tab" data-filter="tervezem">Meglévő</button>
     <button class="tab" data-filter="olvasom">Olvasom</button>
     <button class="tab" data-filter="elolvasva">Elolvasva</button>
     <button class="tab" data-filter="eves_terv">Éves terv</button>
@@ -189,7 +191,7 @@
       <div class="field">
         <label for="f-status">Állapot</label>
         <select id="f-status">
-          <option value="meglévő">Meglévő</option>
+          <option value="tervezem">Meglévő</option>
           <option value="olvasom">Olvasom</option>
           <option value="elolvasva">Elolvasva</option>
           <option value="eves_terv">Éves terv</option>

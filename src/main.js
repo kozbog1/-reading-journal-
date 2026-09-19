@@ -34,7 +34,7 @@ let pendingImageBlob = null;
 let pendingImagePreviewUrl = null;
 let tbrLastIndex = -1;
 
-const statusLabels = { olvasom: 'Olvasom', elolvasva: 'Elolvasva', tervezem: 'Tervezem', eves_terv: 'Éves terv', kivansaglista: 'Kívánságlista' };
+const statusLabels = { meglévő: 'Meglévő', olvasom: 'Olvasom', elolvasva: 'Elolvasva', tervezem: 'Tervezem', eves_terv: 'Éves terv', kivansaglista: 'Kívánságlista' };
 const GENRES = ['Romantikus', 'Thriller', 'Krimi', 'Horror', 'Fantasy', 'Erotikus', 'Sci-fi', 'Ifjúsági', 'Ismeretterjesztő', 'Önfejlesztő', 'Pszichológia', 'Szépirodalom', 'Történelmi', 'Misztikus', 'Regény', 'Novella', 'Vers', 'Memoár', 'Mese'];
 const MONTH_NAMES = ['Január', 'Február', 'Március', 'Április', 'Május', 'Június', 'Július', 'Augusztus', 'Szeptember', 'Október', 'November', 'December'];
 
@@ -920,7 +920,7 @@ document.getElementById('tbrCard').addEventListener('click', (e) => {
 /* ============ FÜLEK ============ */
 
 function updateTabViews() {
-  const isList = ['mind', 'olvasom', 'elolvasva', 'tervezem', 'kivansaglista'].includes(currentFilter);
+  const isList = ['mind', 'meglévő', 'olvasom', 'elolvasva', 'tervezem', 'kivansaglista'].includes(currentFilter);
   const isPlan = currentFilter === 'eves_terv';
   const isTbr = currentFilter === 'tbr';
   document.getElementById('bookList').style.display = isList ? 'block' : 'none';
