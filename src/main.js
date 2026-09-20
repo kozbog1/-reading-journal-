@@ -522,7 +522,7 @@ document.getElementById('addBtn').addEventListener('click', addBook);
 
 /* ============ RENDER: STATS ============ */
 function renderStats() {
-  const remaining = books.filter(b => b.status === 'tervezem' || b.status === 'olvasom').length;
+  const remaining = books.filter(b => b.status === 'meglévő' || b.status === 'tervezem' || b.status === 'olvasom').length;
   const read = books.filter(b => b.status === 'elolvasva');
   const totalPages = read.reduce((s, b) => s + (b.pages || 0), 0);
   document.getElementById('statTotal').textContent = remaining;
@@ -691,13 +691,12 @@ document.getElementById('genreFilter').addEventListener('change', (e) => {
 
 /* ============ RENDER: POLC ============ */
 function renderShelf() {
-let read = books.filter(b =>
-  b.status === 'meglévő' ||
-  b.status === 'tervezem' ||
-  b.status === 'olvasom' ||
-  b.status === 'elolvasva' ||
-  b.status === 'eves_terv'
-);
+  let read = books.filter(b =>
+    b.status === 'meglévő' ||
+    b.status === 'olvasom' ||
+    b.status === 'elolvasva' ||
+    b.status === 'eves_terv'
+  );
   if (currentYearFilter !== 'mind') {
     read = read.filter(b => b.status !== 'elolvasva' || getYear(b.date) === parseInt(currentYearFilter));
   }
@@ -708,13 +707,8 @@ if (shelfSearchQuery) {
       return title.includes(shelfSearchQuery) || author.includes(shelfSearchQuery);
     });
   }
-  const shelfOrder = {
-  olvasom: 0,
-  meglévő: 1,
-  tervezem: 2,
-  eves_terv: 2,
-  elolvasva: 3
-};
+
+  const shelfOrder = { olvasom: 0, 'meglévő': 1, tervezem: 1, eves_terv: 1, elolvasva: 2 };
   read = read.slice().sort((a, b) => (shelfOrder[a.status] ?? 1) - (shelfOrder[b.status] ?? 1));
 
   const shelf = document.getElementById('shelf');
