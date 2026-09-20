@@ -407,7 +407,7 @@ function resetAddForm() {
   document.getElementById('f-rating').value = '0';
   document.getElementById('f-date').value = '';
   document.getElementById('f-note').value = '';
-  document.getElementById('f-status').value = 'tervezem';
+  document.getElementById('f-status').value = 'meglévő';
   document.getElementById('f-pagesread').value = '';
   document.getElementById('f-planyear').value = '';
   document.getElementById('f-image').value = '';
@@ -434,7 +434,7 @@ function startEditBook(id) {
   document.getElementById('f-title').value = b.title || '';
   document.getElementById('f-author').value = b.author || '';
   document.getElementById('f-pages').value = b.pages || '';
-  document.getElementById('f-status').value = b.status || 'tervezem';
+  document.getElementById('f-status').value = b.status || 'meglévő';
   document.getElementById('f-rating').value = b.rating || 0;
   document.getElementById('f-date').value = b.date || '';
   document.getElementById('f-note').value = b.note || '';
@@ -691,12 +691,13 @@ document.getElementById('genreFilter').addEventListener('change', (e) => {
 
 /* ============ RENDER: POLC ============ */
 function renderShelf() {
-  let read = books.filter(b =>
-    b.status === 'tervezem' ||
-    b.status === 'olvasom' ||
-    b.status === 'elolvasva' ||
-    b.status === 'eves_terv'
-  );
+let read = books.filter(b =>
+  b.status === 'meglévő' ||
+  b.status === 'tervezem' ||
+  b.status === 'olvasom' ||
+  b.status === 'elolvasva' ||
+  b.status === 'eves_terv'
+);
   if (currentYearFilter !== 'mind') {
     read = read.filter(b => b.status !== 'elolvasva' || getYear(b.date) === parseInt(currentYearFilter));
   }
@@ -707,7 +708,13 @@ if (shelfSearchQuery) {
       return title.includes(shelfSearchQuery) || author.includes(shelfSearchQuery);
     });
   }
-  const shelfOrder = { olvasom: 0, tervezem: 1, eves_terv: 1, elolvasva: 2 };
+  const shelfOrder = {
+  olvasom: 0,
+  meglévő: 1,
+  tervezem: 2,
+  eves_terv: 2,
+  elolvasva: 3
+};
   read = read.slice().sort((a, b) => (shelfOrder[a.status] ?? 1) - (shelfOrder[b.status] ?? 1));
 
   const shelf = document.getElementById('shelf');
