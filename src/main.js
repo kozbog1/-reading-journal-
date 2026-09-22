@@ -58,6 +58,41 @@ const TBR_CARDS = [
 "Egy nap alatt játszódik a történet"
 ];
 
+const BINGO_ITEMS = [
+"Olvass el egy 500+ oldalas könyvet",
+"Olvass el egy 200 oldal alatti könyvet",
+"Olvass el egy könyvet, ami legalább 5 éve van a TBR-listádon",
+"Olvass el egy magyar szerzőtől származó könyvet",
+"Olvass el egy ázsiai szerzőtől származó könyvet",
+"Olvass el egy elsőkönyves szerzőtől származó könyvet",
+"Olvass el egy klasszikust",
+"Olvass el egy olyan műfajt, amit ritkán olvasol",
+"Olvass el egy thrillert",
+"Olvass el egy fantasy könyvet",
+"Olvass el egy romantikus könyvet",
+"Olvass el egy horror könyvet",
+"Olvass el egy könyvet, amiből film vagy sorozat készült",
+"Olvass el egy könyvet, amit valaki ajánlott neked",
+"Olvass el egy könyvet, amit spontán választottál",
+"Olvass el egy könyvet, amit a borítója miatt választottál",
+"Olvass el egy könyvet, aminek egy szín szerepel a címében",
+"Olvass el egy könyvet, amelynek egy helyszín a címében",
+"Olvass el egy könyvet, amelynek egyszavas címe van",
+"Olvass el egy könyvet egy sorozatból",
+"Fejezz be egy teljes trilógiát vagy sorozatot",
+"Olvass el egy könyvet, amelynek nő a főszereplője",
+"Olvass el egy könyvet, amelynek férfi a főszereplője",
+"Olvass el egy könyvet, amelynek nem ember a főszereplője",
+"Olvass el egy könyvet, amely megsiratott",
+"Olvass el egy könyvet, amitől nem tudtál elszakadni",
+"Olvass el egy könyvet, amitől teljesen mást vártál",
+"Olvass el egy könyvet egy nap alatt",
+"Olvass el egy könyvet, amelynek a borítóján állat szerepel",
+"Olvass el egy könyvet, amelynek a borítóján őszi kép szerepel"
+];
+
+let bingoCompleted = [];
+
 const ICON_PATHS = {
   book: '<path d="M8 10c4-3 10-3 14 0v26c-4-3-10-3-14 0z"/><path d="M40 10c-4-3-10-3-14 0v26c4-3 10-3 14 0z"/>',
   heart: '<path d="M24 40S8 29 8 18a8 8 0 0 1 16-2 8 8 0 0 1 16 2c0 11-16 22-16 22z"/>',
@@ -262,8 +297,11 @@ function renderThemePicker() {
 async function loadThemeFromProfile() {
   if (currentUser) {
     try {
-      const { data, error } = await supabase.from('profiles').select('theme_id').eq('id', currentUser.id).single();
-      if (!error && data && data.theme_id) currentTheme = data.theme_id;
+      const { data, error } = await supabase.from('profiles').select('theme_id, bingo_completed').eq('id', currentUser.id).single();
+      if (!error && data) {
+        if (data.theme_id) currentTheme = data.theme_id;
+        if (Array.isArray(data.bingo_completed)) bingoCompleted = data.bingo_completed;
+      }
     } catch (e) { /* marad az alapertelmezett */ }
   }
   renderThemePicker();
@@ -918,18 +956,48 @@ document.getElementById('tbrCard').addEventListener('click', (e) => {
   e.target.closest('.tbr-card').classList.toggle('flipped');
 });
 
+/* ============ BINGO ============ */
+function renderBingoView() {
+  const el = document.getElementById('bingoView');
+  el.innerHTML = `<div class="bingo-grid">${BINGO_ITEMS.map((text, i) => `
+    <div class="bingo-cell ${bingoCompleted.includes(i) ? 'done' : ''}" data-bingo-index="${i}">
+      <span>${escapeHtml(text)}</span>
+    </div>`).join('')}</div>`;
+}
+document.getElementById('bingoView').addEventListener('click', async (e) => {
+  const cell = e.target.closest('.bingo-cell');
+  if (!cell) return;
+  const idx = parseInt(cell.dataset.bingoIndex);
+  if (bingoCompleted.includes(idx)) {
+    bingoCompleted = bingoCompleted.filter(i => i !== idx);
+  } else {
+    bingoCompleted.push(idx);
+  }
+  renderBingoView();
+  if (!currentUser) return;
+  try {
+    await supabase.from('profiles').update({ bingo_completed: bingoCompleted }).eq('id', currentUser.id);
+  } catch (err) {
+    console.error(err);
+    showToast('Nem sikerült menteni a bingó haladást.', 'error');
+  }
+});
+
 /* ============ FÜLEK ============ */
 
 function updateTabViews() {
   const isList = ['mind', 'meglévő', 'olvasom', 'elolvasva', 'tervezem', 'kivansaglista'].includes(currentFilter);
   const isPlan = currentFilter === 'eves_terv';
   const isTbr = currentFilter === 'tbr';
+  const isBingo = currentFilter === 'bingo';
   document.getElementById('bookList').style.display = isList ? 'block' : 'none';
   document.getElementById('genreFilterWrap').style.display = isList ? 'flex' : 'none';
   document.getElementById('planView').style.display = isPlan ? 'block' : 'none';
   document.getElementById('tbrView').style.display = isTbr ? 'block' : 'none';
+  document.getElementById('bingoView').style.display = isBingo ? 'block' : 'none';
   if (isList) renderList();
   if (isPlan) renderPlanView();
+  if (isBingo) renderBingoView();
 }
 
 document.getElementById('tabs').addEventListener('click', (e) => {
