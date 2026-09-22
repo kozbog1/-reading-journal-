@@ -4,6 +4,7 @@ import * as bookService from './services/bookService.js';
 import * as logService from './services/readingLogService.js';
 import * as coverService from './services/coverService.js';
 import { importFromJson } from './services/importService.js';
+import * as challengeService from './services/challengeService.js';
 
 /* ============================================================
    TOAST (egyszeru visszajelzes sikeres/sikertelen mentesekhez)
@@ -33,6 +34,10 @@ let currentActivityYear = new Date().getFullYear();
 let pendingImageBlob = null;
 let pendingImagePreviewUrl = null;
 let tbrLastIndex = -1;
+let readingLogMeta = {};
+let challengeState = {};
+let currentChallengeCategory = 'mind';
+let justCompletedKeys = new Set();
 
 const statusLabels = { meglévő: 'Meglévő', olvasom: 'Olvasom', elolvasva: 'Elolvasva', tervezem: 'Tervezem', eves_terv: 'Éves terv', kivansaglista: 'Kívánságlista' };
 const GENRES = ['Romantikus', 'Thriller', 'Krimi', 'Horror', 'Fantasy', 'Erotikus', 'Sci-fi', 'Ifjúsági', 'Ismeretterjesztő', 'Önfejlesztő', 'Pszichológia', 'Szépirodalom', 'Történelmi', 'Misztikus', 'Regény', 'Novella', 'Vers', 'Memoár', 'Mese'];
@@ -57,6 +62,84 @@ const TBR_CARDS = [
 "A főszereplő nem ember", "Titkos társaság szerepel benne", "Levelek vagy naplóbejegyzések is vannak benne",
 "Egy nap alatt játszódik a történet"
 ];
+
+const CHALLENGE_CATEGORIES = {
+  streak: '🔥 Olvasási sorozatok',
+  pages: '📄 Oldalszám',
+  books: '📚 Könyvek',
+  evening: '🌙 Esti olvasás',
+  time: '⏱️ Olvasással töltött idő',
+  tbr: '📖 TBR kihívások',
+  genre: '🎨 Műfajok'
+};
+
+const CHALLENGES = [
+  { key: 'streak_30_7', category: 'streak', name: '7 nap – napi 30 oldal', desc: '7 egymást követő napon legalább 30 oldal.', target: 7, unit: 'nap', reward: 'Kedvenc csoki', threshold: 30 },
+  { key: 'streak_50_7', category: 'streak', name: '7 nap – napi 50 oldal', desc: '7 egymást követő napon legalább 50 oldal.', target: 7, unit: 'nap', reward: 'Új könyvjelző', threshold: 50 },
+  { key: 'streak_80_7', category: 'streak', name: '7 nap – napi 80 oldal', desc: '7 egymást követő napon legalább 80 oldal.', target: 7, unit: 'nap', reward: 'Új könyvszámláló', threshold: 80 },
+  { key: 'pages_100', category: 'pages', name: '100 oldal', desc: 'Olvass el összesen 100 oldalt.', target: 100, unit: 'oldal', reward: 'Hosszú fürdő + arcápolás' },
+  { key: 'pages_500', category: 'pages', name: '500 oldal', desc: 'Olvass el összesen 500 oldalt.', target: 500, unit: 'oldal', reward: 'Süti' },
+  { key: 'pages_750', category: 'pages', name: '750 oldal', desc: 'Olvass el összesen 750 oldalt.', target: 750, unit: 'oldal', reward: 'Arcmaszk / beauty apróság' },
+  { key: 'pages_1000', category: 'pages', name: '1000 oldal', desc: 'Olvass el összesen 1000 oldalt.', target: 1000, unit: 'oldal', reward: 'Színház' },
+  { key: 'books_5', category: 'books', name: '5 könyv', desc: 'Olvass el 5 könyvet.', target: 5, unit: 'könyv', reward: '1 új könyv' },
+  { key: 'books_10', category: 'books', name: '10 könyv', desc: 'Olvass el 10 könyvet.', target: 10, unit: 'könyv', reward: 'Mozizás' },
+  { key: 'books_15', category: 'books', name: '15 könyv', desc: 'Olvass el 15 könyvet.', target: 15, unit: 'könyv', reward: '2 új könyv' },
+  { key: 'books_30', category: 'books', name: '30 könyv', desc: 'Olvass el 30 könyvet.', target: 30, unit: 'könyv', reward: 'Különleges könyv' },
+  { key: 'books_50', category: 'books', name: '50 könyv', desc: 'Olvass el 50 könyvet.', target: 50, unit: 'könyv', reward: 'E-reader' },
+  { key: 'evening_10', category: 'evening', name: 'Esti olvasás', desc: '10 este, amikor legalább 15 oldalt olvastál.', target: 10, unit: 'este', reward: 'Manikűr' },
+  { key: 'time_30x30', category: 'time', name: 'Olvasással töltött idő', desc: '30 alkalommal legalább 30 perc olvasás.', target: 30, unit: 'alkalom', reward: 'Sushi' },
+  { key: 'tbr_1', category: 'tbr', name: 'Régóta halogatott könyv', desc: 'Fejezd be a kiválasztott, régóta halogatott könyvet.', target: 1, unit: 'könyv', reward: 'Új gyertya', pickBook: true },
+  { key: 'tbr_3', category: 'tbr', name: '3 TBR könyv', desc: 'Olvass el 3 könyvet a TBR-listádról.', target: 3, unit: 'könyv', reward: 'Pedikűr' },
+  { key: 'tbr_5', category: 'tbr', name: '5 TBR könyv', desc: 'Olvass el 5 könyvet a TBR-listádról.', target: 5, unit: 'könyv', reward: 'Kedvenc étterem' },
+  { key: 'genre_3', category: 'genre', name: '3 különböző műfaj', desc: 'Olvass el legalább 3 különböző műfajt.', target: 3, unit: 'műfaj', reward: 'Brunch' },
+  { key: 'genre_5', category: 'genre', name: '5 különböző műfaj', desc: 'Olvass el legalább 5 különböző műfajt.', target: 5, unit: 'műfaj', reward: 'Új ruhadarab' }
+];
+
+function computeStreak(threshold) {
+  let count = 0;
+  let d = new Date();
+  for (let i = 0; i < 3650; i++) {
+    const dateStr = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    const pages = readingLog[dateStr];
+    if (pages !== undefined && pages >= threshold) {
+      count++;
+      d.setDate(d.getDate() - 1);
+    } else break;
+  }
+  return count;
+}
+
+function computeChallengeProgress(ch) {
+  switch (ch.category) {
+    case 'streak':
+      return computeStreak(ch.threshold);
+    case 'pages':
+      return books.filter(b => b.status === 'elolvasva').reduce((s, b) => s + (b.pages || 0), 0);
+    case 'books':
+      return books.filter(b => b.status === 'elolvasva').length;
+    case 'evening':
+      return Object.entries(readingLog).filter(([date, pages]) =>
+        readingLogMeta[date] && readingLogMeta[date].isEvening && pages >= 15
+      ).length;
+    case 'time':
+      return Object.entries(readingLogMeta).filter(([, meta]) => (meta.durationMinutes || 0) >= 30).length;
+    case 'tbr':
+      if (ch.pickBook) {
+        const state = challengeState[ch.key];
+        if (!state || !state.target_book_id) return 0;
+        const b = books.find(x => x.id === state.target_book_id);
+        return (b && b.status === 'elolvasva') ? 1 : 0;
+      }
+      return books.filter(b => b.status === 'elolvasva' && b.fromTbr).length;
+    case 'genre': {
+      const set = new Set();
+      books.filter(b => b.status === 'elolvasva').forEach(b => (b.genres || []).forEach(g => set.add(g)));
+      return set.size;
+    }
+    default:
+      return 0;
+  }
+}
 
 const BINGO_ITEMS = [
 "Olvass el egy 500+ oldalas könyvet",
@@ -349,11 +432,21 @@ async function loadBooksAndLog() {
   }));
 
   try {
-    readingLog = await logService.loadReadingLog(currentUser.id);
+    const result = await logService.loadReadingLog(currentUser.id);
+    readingLog = result.log;
+    readingLogMeta = result.meta;
   } catch (e) {
     console.error(e);
     showToast('Nem sikerült betölteni az olvasási naplót.', 'error');
     readingLog = {};
+    readingLogMeta = {};
+  }
+
+  try {
+    challengeState = await challengeService.loadChallengeState(currentUser.id);
+  } catch (e) {
+    console.error(e);
+    challengeState = {};
   }
 
   render();
@@ -512,8 +605,17 @@ async function addBook() {
   if (!title) { showToast('Add meg legalább a könyv címét.', 'error'); return; }
   if (!currentUser) { showToast('Nincs bejelentkezve felhasználó.', 'error'); return; }
 
+  let fromTbrValue;
+  if (editingId) {
+    const existingBook = books.find(b => b.id === editingId);
+    fromTbrValue = existingBook ? !!existingBook.fromTbr : false;
+  } else {
+    fromTbrValue = !(status === 'olvasom' || status === 'elolvasva');
+  }
+
   const fields = {
-    title, author, pages, status, rating, date, note, genres,series,
+    title, author, pages, status, rating, date, note, genres, series,
+    fromTbr: fromTbrValue,
     pagesRead: status === 'olvasom' ? pagesRead : 0,
     plannedMonth: status === 'eves_terv' ? plannedMonth : null,
     plannedYear: status === 'eves_terv' ? plannedYear : null
@@ -647,9 +749,14 @@ function openActivityPopover(dayEl) {
   const pop = document.createElement('div');
   pop.className = 'activity-popover';
   pop.id = 'activityPopover';
+  const existingMeta = readingLogMeta[date] || {};
   pop.innerHTML = `
     <div class="pop-date">${date}</div>
     <input type="number" min="0" id="popPagesInput" placeholder="Hány oldalt olvastál?" value="${existingPages !== undefined ? existingPages : ''}">
+    <label style="display:flex; align-items:center; gap:6px; font-size:0.65rem;">
+      <input type="checkbox" id="popEveningInput" ${existingMeta.isEvening ? 'checked' : ''}> Este olvastam
+    </label>
+    <input type="number" min="0" id="popMinutesInput" placeholder="Hány percig olvastál? (opcionális)" value="${existingMeta.durationMinutes || ''}">
     <div class="pop-row">
       <button class="primary" id="popSaveBtn">Mentés</button>
       <button id="popDeleteBtn">Törlés</button>
@@ -663,14 +770,19 @@ function openActivityPopover(dayEl) {
 
   document.getElementById('popSaveBtn').addEventListener('click', async () => {
     const val = parseInt(document.getElementById('popPagesInput').value);
+    const isEvening = document.getElementById('popEveningInput').checked;
+    const minutesVal = parseInt(document.getElementById('popMinutesInput').value);
+    const durationMinutes = isNaN(minutesVal) ? 0 : minutesVal;
     if (!isNaN(val) && val >= 0) {
       readingLog[date] = val;
+      readingLogMeta[date] = { isEvening, durationMinutes };
       renderActivity();
-      try { await logService.upsertReadingLogEntry(currentUser.id, date, val); }
+      try { await logService.upsertReadingLogEntry(currentUser.id, date, val, { isEvening, durationMinutes }); }
       catch (e) { console.error(e); showToast('Nem sikerült menteni az olvasott oldalszámot.', 'error'); }
     }
     closeActivityPopover();
   });
+
   document.getElementById('popDeleteBtn').addEventListener('click', async () => {
     delete readingLog[date];
     renderActivity();
@@ -989,14 +1101,17 @@ function updateTabViews() {
   const isList = ['mind', 'meglévő', 'olvasom', 'elolvasva', 'tervezem', 'kivansaglista'].includes(currentFilter);
   const isPlan = currentFilter === 'eves_terv';
   const isTbr = currentFilter === 'tbr';
+  const isChallenges = currentFilter === 'challenges';
   const isBingo = currentFilter === 'bingo';
   document.getElementById('bookList').style.display = isList ? 'block' : 'none';
   document.getElementById('genreFilterWrap').style.display = isList ? 'flex' : 'none';
   document.getElementById('planView').style.display = isPlan ? 'block' : 'none';
   document.getElementById('tbrView').style.display = isTbr ? 'block' : 'none';
+  document.getElementById('challengesView').style.display = isChallenges ? 'block' : 'none';
   document.getElementById('bingoView').style.display = isBingo ? 'block' : 'none';
   if (isList) renderList();
   if (isPlan) renderPlanView();
+  if (isChallenges) renderChallengesView();
   if (isBingo) renderBingoView();
 }
 
@@ -1008,6 +1123,127 @@ document.getElementById('tabs').addEventListener('click', (e) => {
     updateTabViews();
   }
 });
+
+/* ============ KIHÍVÁSOK ============ */
+function renderChallengesDashboard() {
+  const completedCount = CHALLENGES.filter(ch => computeChallengeProgress(ch) >= ch.target).length;
+  const totalPages = books.filter(b => b.status === 'elolvasva').reduce((s, b) => s + (b.pages || 0), 0);
+  const totalBooks = books.filter(b => b.status === 'elolvasva').length;
+  const streak = Math.max(computeStreak(1), 0);
+  const totalMinutes = Object.values(readingLogMeta).reduce((s, m) => s + (m.durationMinutes || 0), 0);
+  const claimedCount = Object.values(challengeState).filter(s => s.reward_claimed).length;
+
+  return `
+  <div class="challenges-dashboard">
+    <div class="stat"><span class="stat-num">${completedCount}</span><span class="stat-label">🏆 Teljesítve</span></div>
+    <div class="stat"><span class="stat-num">${totalPages.toLocaleString('hu-HU')}</span><span class="stat-label">📖 Oldal</span></div>
+    <div class="stat"><span class="stat-num">${totalBooks}</span><span class="stat-label">📚 Könyv</span></div>
+    <div class="stat"><span class="stat-num">${streak}</span><span class="stat-label">🔥 Streak</span></div>
+    <div class="stat"><span class="stat-num">${totalMinutes}</span><span class="stat-label">⏱️ Perc</span></div>
+    <div class="stat"><span class="stat-num">${claimedCount}</span><span class="stat-label">🎁 Beváltva</span></div>
+  </div>`;
+}
+
+function renderChallengeCard(ch) {
+  const progress = computeChallengeProgress(ch);
+  const isCompleted = progress >= ch.target;
+  const state = challengeState[ch.key];
+  const isClaimed = !!(state && state.reward_claimed);
+  const pct = Math.min(100, Math.round((progress / ch.target) * 100));
+  const statusLabel = isCompleted ? '🎉 Teljesítve' : (progress > 0 ? '📖 Folyamatban' : '🔒 Zárolva');
+  const justCompletedClass = justCompletedKeys.has(ch.key) ? ' just-completed' : '';
+
+  let pickHtml = '';
+  if (ch.pickBook && !isClaimed) {
+    const tbrBooks = books.filter(b => b.status === 'tervezem' || b.status === 'meglévő' || b.status === 'eves_terv');
+    const selected = state ? state.target_book_id : '';
+    pickHtml = `
+      <select class="challenge-pick-select" data-pick-challenge="${ch.key}">
+        <option value="">— válassz könyvet —</option>
+        ${tbrBooks.map(b => `<option value="${b.id}" ${b.id === selected ? 'selected' : ''}>${escapeHtml(b.title)}</option>`).join('')}
+      </select>`;
+  }
+
+  const claimBtn = isCompleted
+    ? (isClaimed
+      ? `<button class="challenge-claim-btn" disabled>🎁 Már beváltva</button>`
+      : `<button class="challenge-claim-btn" data-claim-challenge="${ch.key}">🎁 Jutalom beváltása</button>`)
+    : '';
+
+  return `
+  <div class="challenge-card ${isCompleted ? 'completed' : (progress === 0 ? 'locked' : '')}${justCompletedClass}">
+    <div class="challenge-top">
+      <span class="challenge-name">${escapeHtml(ch.name)}</span>
+      <span class="challenge-status">${statusLabel}</span>
+    </div>
+    <div class="challenge-desc">${escapeHtml(ch.desc)}</div>
+    ${pickHtml}
+    <div class="challenge-progress-bar-wrap"><div class="challenge-progress-bar" style="width:${pct}%;"></div></div>
+    <div class="challenge-progress-text"><span>${Math.min(progress, ch.target)} / ${ch.target} ${ch.unit}</span><span>${pct}%</span></div>
+    <div class="challenge-reward">🎁 ${escapeHtml(ch.reward)}${isClaimed ? ' — beváltva' : ''}</div>
+    ${claimBtn}
+  </div>`;
+}
+
+function renderChallengesView() {
+  const el = document.getElementById('challengesView');
+  const filtered = currentChallengeCategory === 'mind'
+    ? CHALLENGES
+    : CHALLENGES.filter(ch => ch.category === currentChallengeCategory);
+
+  const catButtons = ['mind', ...Object.keys(CHALLENGE_CATEGORIES)].map(cat => `
+    <button class="challenge-cat-btn ${currentChallengeCategory === cat ? 'active' : ''}" data-cat="${cat}">
+      ${cat === 'mind' ? 'Összes' : CHALLENGE_CATEGORIES[cat]}
+    </button>`).join('');
+
+  el.innerHTML = `
+    ${renderChallengesDashboard()}
+    <div class="challenge-cat-filter">${catButtons}</div>
+    <div class="challenge-grid">${filtered.map(renderChallengeCard).join('')}</div>
+  `;
+
+  el.querySelectorAll('[data-cat]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentChallengeCategory = btn.dataset.cat;
+      renderChallengesView();
+    });
+  });
+  el.querySelectorAll('[data-pick-challenge]').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      const key = sel.dataset.pickChallenge;
+      try {
+        await challengeService.upsertChallengeState(currentUser.id, key, { target_book_id: sel.value || null });
+        challengeState = await challengeService.loadChallengeState(currentUser.id);
+        renderChallengesView();
+      } catch (e) {
+        console.error(e);
+        showToast('Nem sikerült elmenteni a választást.', 'error');
+      }
+    });
+  });
+  el.querySelectorAll('[data-claim-challenge]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const key = btn.dataset.claimChallenge;
+      if (!confirm('Teljesítetted ezt a kihívást! Szeretnéd beváltani a jutalmadat?')) return;
+      try {
+        await challengeService.upsertChallengeState(currentUser.id, key, {
+          completed: true,
+          completed_at: new Date().toISOString(),
+          reward_claimed: true,
+          claimed_at: new Date().toISOString()
+        });
+        challengeState = await challengeService.loadChallengeState(currentUser.id);
+        justCompletedKeys.add(key);
+        renderChallengesView();
+        showToast('Jutalom beváltva! 🎉', 'success');
+        setTimeout(() => { justCompletedKeys.delete(key); }, 800);
+      } catch (e) {
+        console.error(e);
+        showToast('Nem sikerült beváltani a jutalmat.', 'error');
+      }
+    });
+  });
+}
 
 function render() {
   populateYearFilter();
