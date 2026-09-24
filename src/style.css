@@ -732,3 +732,28 @@
 }
 .challenge-claim-btn:disabled{opacity:0.5; cursor:default;}
 .challenge-pick-select{margin-top:4px;}
+
+.challenge-start-date{margin-top:4px; display:flex; align-items:center; gap:6px; font-family:'JetBrains Mono', monospace; font-size:0.62rem;}
+.challenge-start-date input{padding:4px 6px; font-size:0.7rem;}
+.challenge-genre-picks{margin-top:6px; max-height:140px; overflow-y:auto; border:1px solid var(--ink); padding:6px; border-radius:2px;}
+.challenge-genre-picks label{display:flex; align-items:center; gap:6px; font-size:0.72rem; padding:2px 0; cursor:pointer;}
+.challenge-manual-controls{display:flex; align-items:center; gap:10px; margin-top:4px;}
+.challenge-manual-btn{
+  width:28px; height:28px; border:1px solid var(--ink); background:var(--paper); color:var(--ink);
+  cursor:pointer; border-radius:2px; font-family:'JetBrains Mono', monospace; font-size:0.9rem;
+}
+.challenge-card.completed .challenge-manual-btn{border-color:var(--paper); color:var(--paper); background:transparent;}
+.add-challenge-btn{
+  margin-bottom:18px; padding:9px 16px; font-family:'JetBrains Mono', monospace; font-size:0.72rem; text-transform:uppercase;
+  background:var(--ink); color:var(--paper); border:1px solid var(--ink); cursor:pointer; border-radius:2px;
+}
+.custom-challenge-form{
+  border:1px solid var(--ink); background:var(--paper-dark); padding:16px; margin-bottom:20px;
+  display:grid; grid-template-columns:1fr 1fr; gap:10px;
+}
+.custom-challenge-form textarea, .custom-challenge-form input, .custom-challenge-form select{grid-column:span 1;}
+.custom-challenge-form .full-width{grid-column:1 / -1;}
+.challenge-delete-btn{
+  position:absolute; top:10px; right:10px; background:none; border:none; color:inherit;
+  cursor:pointer; font-size:0.9rem; opacity:0.6;
+}

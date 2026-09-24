@@ -36,8 +36,10 @@ let pendingImagePreviewUrl = null;
 let tbrLastIndex = -1;
 let readingLogMeta = {};
 let challengeState = {};
+let customChallenges = [];
 let currentChallengeCategory = 'mind';
 let justCompletedKeys = new Set();
+let showCustomChallengeForm = false;
 
 const statusLabels = { meglévő: 'Meglévő', olvasom: 'Olvasom', elolvasva: 'Elolvasva', tervezem: 'Tervezem', eves_terv: 'Éves terv', kivansaglista: 'Kívánságlista' };
 const GENRES = ['Romantikus', 'Thriller', 'Krimi', 'Horror', 'Fantasy', 'Erotikus', 'Sci-fi', 'Ifjúsági', 'Ismeretterjesztő', 'Önfejlesztő', 'Pszichológia', 'Szépirodalom', 'Történelmi', 'Misztikus', 'Regény', 'Novella', 'Vers', 'Memoár', 'Mese'];
@@ -95,11 +97,12 @@ const CHALLENGES = [
   { key: 'genre_5', category: 'genre', name: '5 különböző műfaj', desc: 'Olvass el legalább 5 különböző műfajt.', target: 5, unit: 'műfaj', reward: 'Új ruhadarab' }
 ];
 
-function computeStreak(threshold) {
+function computeStreak(threshold, startDate) {
   let count = 0;
   let d = new Date();
   for (let i = 0; i < 3650; i++) {
     const dateStr = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    if (startDate && dateStr < startDate) break;
     const pages = readingLog[dateStr];
     if (pages !== undefined && pages >= threshold) {
       count++;
@@ -110,30 +113,40 @@ function computeStreak(threshold) {
 }
 
 function computeChallengeProgress(ch) {
+  const state = challengeState[ch.key];
+  const startDate = state ? state.start_date : null;
+
+  if (ch.custom) {
+    return state ? (state.manual_progress || 0) : 0;
+  }
+
   switch (ch.category) {
     case 'streak':
-      return computeStreak(ch.threshold);
+      return computeStreak(ch.threshold, startDate);
     case 'pages':
-      return books.filter(b => b.status === 'elolvasva').reduce((s, b) => s + (b.pages || 0), 0);
+      return books.filter(b => b.status === 'elolvasva' && (!startDate || (b.date && b.date >= startDate)))
+        .reduce((s, b) => s + (b.pages || 0), 0);
     case 'books':
-      return books.filter(b => b.status === 'elolvasva').length;
+      return books.filter(b => b.status === 'elolvasva' && (!startDate || (b.date && b.date >= startDate))).length;
     case 'evening':
       return Object.entries(readingLog).filter(([date, pages]) =>
-        readingLogMeta[date] && readingLogMeta[date].isEvening && pages >= 15
+        (!startDate || date >= startDate) && readingLogMeta[date] && readingLogMeta[date].isEvening && pages >= 15
       ).length;
     case 'time':
-      return Object.entries(readingLogMeta).filter(([, meta]) => (meta.durationMinutes || 0) >= 30).length;
+      return Object.entries(readingLogMeta).filter(([date, meta]) =>
+        (!startDate || date >= startDate) && (meta.durationMinutes || 0) >= 30
+      ).length;
     case 'tbr':
       if (ch.pickBook) {
-        const state = challengeState[ch.key];
         if (!state || !state.target_book_id) return 0;
         const b = books.find(x => x.id === state.target_book_id);
         return (b && b.status === 'elolvasva') ? 1 : 0;
       }
-      return books.filter(b => b.status === 'elolvasva' && b.fromTbr).length;
+      return books.filter(b => b.status === 'elolvasva' && b.fromTbr && (!startDate || (b.date && b.date >= startDate))).length;
     case 'genre': {
+      const ids = state && Array.isArray(state.target_book_ids) ? state.target_book_ids : [];
       const set = new Set();
-      books.filter(b => b.status === 'elolvasva').forEach(b => (b.genres || []).forEach(g => set.add(g)));
+      books.filter(b => ids.includes(b.id) && b.status === 'elolvasva').forEach(b => (b.genres || []).forEach(g => set.add(g)));
       return set.size;
     }
     default:
@@ -447,6 +460,13 @@ async function loadBooksAndLog() {
   } catch (e) {
     console.error(e);
     challengeState = {};
+  }
+
+  try {
+    customChallenges = await challengeService.loadCustomChallenges(currentUser.id);
+  } catch (e) {
+    console.error(e);
+    customChallenges = [];
   }
 
   render();
@@ -1152,6 +1172,7 @@ function renderChallengeCard(ch) {
   const pct = Math.min(100, Math.round((progress / ch.target) * 100));
   const statusLabel = isCompleted ? '🎉 Teljesítve' : (progress > 0 ? '📖 Folyamatban' : '🔒 Zárolva');
   const justCompletedClass = justCompletedKeys.has(ch.key) ? ' just-completed' : '';
+  const startDateVal = state && state.start_date ? state.start_date : '';
 
   let pickHtml = '';
   if (ch.pickBook && !isClaimed) {
@@ -1164,22 +1185,59 @@ function renderChallengeCard(ch) {
       </select>`;
   }
 
+  let genrePickHtml = '';
+  if (ch.category === 'genre' && !isClaimed) {
+    const finishedBooks = books.filter(b => b.status === 'elolvasva');
+    const selectedIds = state && Array.isArray(state.target_book_ids) ? state.target_book_ids : [];
+    genrePickHtml = `
+      <div class="challenge-genre-picks">
+        ${finishedBooks.length === 0
+          ? '<div style="opacity:0.6;">Nincs még elolvasott könyved.</div>'
+          : finishedBooks.map(b => `
+            <label>
+              <input type="checkbox" data-genre-pick="${ch.key}" data-book-id="${b.id}" ${selectedIds.includes(b.id) ? 'checked' : ''}>
+              ${escapeHtml(b.title)} <span style="opacity:0.6;">(${(b.genres||[]).join(', ') || 'nincs műfaj'})</span>
+            </label>`).join('')}
+      </div>`;
+  }
+
+  const startDateHtml = (!ch.pickBook && ch.category !== 'genre' && !ch.custom) ? `
+    <div class="challenge-start-date">
+      <label for="start-${ch.key}">Kezdés:</label>
+      <input type="date" id="start-${ch.key}" data-start-challenge="${ch.key}" value="${startDateVal}">
+    </div>` : '';
+
+  const manualControls = ch.custom ? `
+    <div class="challenge-manual-controls">
+      <button type="button" class="challenge-manual-btn" data-manual-dec="${ch.key}">−</button>
+      <span>${Math.min(progress, ch.target)} / ${ch.target}</span>
+      <button type="button" class="challenge-manual-btn" data-manual-inc="${ch.key}">+</button>
+    </div>` : '';
+
   const claimBtn = isCompleted
     ? (isClaimed
       ? `<button class="challenge-claim-btn" disabled>🎁 Már beváltva</button>`
       : `<button class="challenge-claim-btn" data-claim-challenge="${ch.key}">🎁 Jutalom beváltása</button>`)
     : '';
 
+  const deleteBtn = ch.custom ? `<button type="button" class="challenge-delete-btn" data-delete-custom="${ch.id}" title="Törlés">✕</button>` : '';
+
   return `
   <div class="challenge-card ${isCompleted ? 'completed' : (progress === 0 ? 'locked' : '')}${justCompletedClass}">
+    ${deleteBtn}
     <div class="challenge-top">
       <span class="challenge-name">${escapeHtml(ch.name)}</span>
       <span class="challenge-status">${statusLabel}</span>
     </div>
     <div class="challenge-desc">${escapeHtml(ch.desc)}</div>
     ${pickHtml}
-    <div class="challenge-progress-bar-wrap"><div class="challenge-progress-bar" style="width:${pct}%;"></div></div>
-    <div class="challenge-progress-text"><span>${Math.min(progress, ch.target)} / ${ch.target} ${ch.unit}</span><span>${pct}%</span></div>
+    ${genrePickHtml}
+    ${startDateHtml}
+    ${ch.custom
+      ? manualControls
+      : `<div class="challenge-progress-bar-wrap"><div class="challenge-progress-bar" style="width:${pct}%;"></div></div>
+         <div class="challenge-progress-text"><span>${Math.min(progress, ch.target)} / ${ch.target} ${ch.unit}</span><span>${pct}%</span></div>`
+    }
     <div class="challenge-reward">🎁 ${escapeHtml(ch.reward)}${isClaimed ? ' — beváltva' : ''}</div>
     ${claimBtn}
   </div>`;
@@ -1187,27 +1245,96 @@ function renderChallengeCard(ch) {
 
 function renderChallengesView() {
   const el = document.getElementById('challengesView');
-  const filtered = currentChallengeCategory === 'mind'
-    ? CHALLENGES
-    : CHALLENGES.filter(ch => ch.category === currentChallengeCategory);
+  const customAsChallenges = customChallenges.map(c => ({
+    key: 'custom_' + c.id,
+    id: c.id,
+    category: c.category,
+    name: c.name,
+    desc: c.description || '',
+    target: c.target,
+    unit: c.unit || 'db',
+    reward: c.reward || '',
+    custom: true
+  }));
+  const allChallenges = [...CHALLENGES, ...customAsChallenges];
 
-  const catButtons = ['mind', ...Object.keys(CHALLENGE_CATEGORIES)].map(cat => `
+  const filtered = currentChallengeCategory === 'mind'
+    ? allChallenges
+    : allChallenges.filter(ch => ch.category === currentChallengeCategory);
+
+  const catButtons = ['mind', ...Object.keys(CHALLENGE_CATEGORIES), 'egyeb'].map(cat => `
     <button class="challenge-cat-btn ${currentChallengeCategory === cat ? 'active' : ''}" data-cat="${cat}">
-      ${cat === 'mind' ? 'Összes' : CHALLENGE_CATEGORIES[cat]}
+      ${cat === 'mind' ? 'Összes' : (cat === 'egyeb' ? '✨ Egyéb' : CHALLENGE_CATEGORIES[cat])}
     </button>`).join('');
+
+  const formHtml = showCustomChallengeForm ? `
+    <div class="custom-challenge-form">
+      <input type="text" id="newChallengeName" placeholder="Kihívás neve" class="full-width">
+      <textarea id="newChallengeDesc" placeholder="Rövid leírás" class="full-width"></textarea>
+      <select id="newChallengeCategory">
+        ${Object.entries(CHALLENGE_CATEGORIES).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}
+        <option value="egyeb">✨ Egyéb</option>
+      </select>
+      <input type="number" id="newChallengeTarget" placeholder="Célérték" min="1">
+      <input type="text" id="newChallengeUnit" placeholder="Mértékegység (pl. könyv, oldal)">
+      <input type="text" id="newChallengeReward" placeholder="Jutalom">
+      <button type="button" class="submit-btn full-width" id="saveCustomChallengeBtn" style="background:var(--ink); color:var(--paper); border-color:var(--ink);">Mentés</button>
+    </div>` : '';
 
   el.innerHTML = `
     ${renderChallengesDashboard()}
+    <button type="button" class="add-challenge-btn" id="toggleCustomChallengeForm">${showCustomChallengeForm ? '✕ Mégse' : '+ Új kihívás hozzáadása'}</button>
+    ${formHtml}
     <div class="challenge-cat-filter">${catButtons}</div>
     <div class="challenge-grid">${filtered.map(renderChallengeCard).join('')}</div>
   `;
 
   el.querySelectorAll('[data-cat]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      currentChallengeCategory = btn.dataset.cat;
-      renderChallengesView();
+    btn.addEventListener('click', () => { currentChallengeCategory = btn.dataset.cat; renderChallengesView(); });
+  });
+
+  document.getElementById('toggleCustomChallengeForm').addEventListener('click', () => {
+    showCustomChallengeForm = !showCustomChallengeForm;
+    renderChallengesView();
+  });
+
+  const saveBtn = document.getElementById('saveCustomChallengeBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      const name = document.getElementById('newChallengeName').value.trim();
+      const description = document.getElementById('newChallengeDesc').value.trim();
+      const category = document.getElementById('newChallengeCategory').value;
+      const target = parseInt(document.getElementById('newChallengeTarget').value) || 1;
+      const unit = document.getElementById('newChallengeUnit').value.trim() || 'db';
+      const reward = document.getElementById('newChallengeReward').value.trim();
+      if (!name) { showToast('Add meg a kihívás nevét.', 'error'); return; }
+      try {
+        await challengeService.insertCustomChallenge(currentUser.id, { name, description, category, target, unit, reward });
+        customChallenges = await challengeService.loadCustomChallenges(currentUser.id);
+        showCustomChallengeForm = false;
+        renderChallengesView();
+        showToast('Kihívás hozzáadva.', 'success');
+      } catch (e) {
+        console.error(e);
+        showToast('Nem sikerült menteni a kihívást.', 'error');
+      }
+    });
+  }
+
+  el.querySelectorAll('[data-delete-custom]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Biztosan törlöd ezt a kihívást?')) return;
+      try {
+        await challengeService.deleteCustomChallenge(btn.dataset.deleteCustom);
+        customChallenges = await challengeService.loadCustomChallenges(currentUser.id);
+        renderChallengesView();
+      } catch (e) {
+        console.error(e);
+        showToast('Nem sikerült törölni a kihívást.', 'error');
+      }
     });
   });
+
   el.querySelectorAll('[data-pick-challenge]').forEach(sel => {
     sel.addEventListener('change', async () => {
       const key = sel.dataset.pickChallenge;
@@ -1215,32 +1342,67 @@ function renderChallengesView() {
         await challengeService.upsertChallengeState(currentUser.id, key, { target_book_id: sel.value || null });
         challengeState = await challengeService.loadChallengeState(currentUser.id);
         renderChallengesView();
-      } catch (e) {
-        console.error(e);
-        showToast('Nem sikerült elmenteni a választást.', 'error');
-      }
+      } catch (e) { console.error(e); showToast('Nem sikerült elmenteni a választást.', 'error'); }
     });
   });
+
+  el.querySelectorAll('[data-genre-pick]').forEach(cb => {
+    cb.addEventListener('change', async () => {
+      const key = cb.dataset.genrePick;
+      const bookId = cb.dataset.bookId;
+      const state = challengeState[key];
+      let ids = state && Array.isArray(state.target_book_ids) ? state.target_book_ids.slice() : [];
+      if (cb.checked) { if (!ids.includes(bookId)) ids.push(bookId); }
+      else { ids = ids.filter(id => id !== bookId); }
+      try {
+        await challengeService.upsertChallengeState(currentUser.id, key, { target_book_ids: ids });
+        challengeState = await challengeService.loadChallengeState(currentUser.id);
+        renderChallengesView();
+      } catch (e) { console.error(e); showToast('Nem sikerült menteni a kiválasztást.', 'error'); }
+    });
+  });
+
+  el.querySelectorAll('[data-start-challenge]').forEach(inp => {
+    inp.addEventListener('change', async () => {
+      const key = inp.dataset.startChallenge;
+      try {
+        await challengeService.upsertChallengeState(currentUser.id, key, { start_date: inp.value || null });
+        challengeState = await challengeService.loadChallengeState(currentUser.id);
+        renderChallengesView();
+      } catch (e) { console.error(e); showToast('Nem sikerült menteni a kezdő dátumot.', 'error'); }
+    });
+  });
+
+  el.querySelectorAll('[data-manual-inc], [data-manual-dec]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const key = btn.dataset.manualInc || btn.dataset.manualDec;
+      const delta = btn.dataset.manualInc ? 1 : -1;
+      const ch = customAsChallenges.find(c => c.key === key);
+      const current = (challengeState[key] && challengeState[key].manual_progress) || 0;
+      const next = Math.max(0, Math.min(ch ? ch.target : 9999, current + delta));
+      try {
+        await challengeService.upsertChallengeState(currentUser.id, key, { manual_progress: next });
+        challengeState = await challengeService.loadChallengeState(currentUser.id);
+        renderChallengesView();
+      } catch (e) { console.error(e); showToast('Nem sikerült menteni a haladást.', 'error'); }
+    });
+  });
+
   el.querySelectorAll('[data-claim-challenge]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const key = btn.dataset.claimChallenge;
       if (!confirm('Teljesítetted ezt a kihívást! Szeretnéd beváltani a jutalmadat?')) return;
       try {
         await challengeService.upsertChallengeState(currentUser.id, key, {
-          completed: true,
-          completed_at: new Date().toISOString(),
-          reward_claimed: true,
-          claimed_at: new Date().toISOString()
+          completed: true, completed_at: new Date().toISOString(),
+          reward_claimed: true, claimed_at: new Date().toISOString()
         });
         challengeState = await challengeService.loadChallengeState(currentUser.id);
         justCompletedKeys.add(key);
         renderChallengesView();
         showToast('Jutalom beváltva! 🎉', 'success');
         setTimeout(() => { justCompletedKeys.delete(key); }, 800);
-      } catch (e) {
-        console.error(e);
-        showToast('Nem sikerült beváltani a jutalmat.', 'error');
-      }
+      } catch (e) { console.error(e); showToast('Nem sikerült beváltani a jutalmat.', 'error'); }
     });
   });
 }
