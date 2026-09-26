@@ -1187,16 +1187,19 @@ function renderChallengeCard(ch) {
 
   let genrePickHtml = '';
   if (ch.category === 'genre' && !isClaimed) {
-    const finishedBooks = books.filter(b => b.status === 'elolvasva');
+    const pickableBooks = books.filter(b => b.status !== 'kivansaglista');
     const selectedIds = state && Array.isArray(state.target_book_ids) ? state.target_book_ids : [];
     genrePickHtml = `
       <div class="challenge-genre-picks">
-        ${finishedBooks.length === 0
-          ? '<div style="opacity:0.6;">Nincs még elolvasott könyved.</div>'
-          : finishedBooks.map(b => `
+        ${pickableBooks.length === 0
+          ? '<div style="opacity:0.6;">Nincs még könyved a naplóban.</div>'
+          : pickableBooks.map(b => `
             <label>
               <input type="checkbox" data-genre-pick="${ch.key}" data-book-id="${b.id}" ${selectedIds.includes(b.id) ? 'checked' : ''}>
-              ${escapeHtml(b.title)} <span style="opacity:0.6;">(${(b.genres||[]).join(', ') || 'nincs műfaj'})</span>
+              ${escapeHtml(b.title)}
+              <span style="opacity:0.6;">
+                (${statusLabels[b.status] || b.status}${b.status === 'elolvasva' ? '' : ' — még nincs elolvasva'})
+              </span>
             </label>`).join('')}
       </div>`;
   }
