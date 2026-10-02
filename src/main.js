@@ -428,6 +428,20 @@ function getYear(dateStr) {
 function daysInMonth(year, month) { return new Date(year, month, 0).getDate(); }
 function pad2(n) { return String(n).padStart(2, '0'); }
 
+async function mapWithConcurrencyLimit(items, limit, fn) {
+  const results = [];
+  let index = 0;
+  async function worker() {
+    while (index < items.length) {
+      const current = index++;
+      results[current] = await fn(items[current], current);
+    }
+  }
+  const workers = Array.from({ length: Math.min(limit, items.length) }, worker);
+  await Promise.all(workers);
+  return results;
+}
+
 /* ============ DATA LOADING (Supabase) ============ */
 async function loadBooksAndLog() {
   if (!currentUser) return;
@@ -440,9 +454,9 @@ async function loadBooksAndLog() {
     books = [];
   }
 
-  await Promise.all(books.map(async (b) => {
+  await mapWithConcurrencyLimit(books, 5, async (b) => {
     b.coverUrl = b.coverPath ? await coverService.getCoverUrl(b.coverPath) : null;
-  }));
+  });
 
   try {
     const result = await logService.loadReadingLog(currentUser.id);
