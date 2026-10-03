@@ -28,7 +28,9 @@ let readingLog = {}; // { 'YYYY-MM-DD': pagesInt }
 let currentUser = null;
 let currentFilter = 'mind';
 let currentYearFilter = 'mind';
+let currentPlanYear = new Date().getFullYear();
 let currentGenreFilter = 'mind';
+let currentSeriesFilter = '';
 let currentActivityMonth = new Date().getMonth() + 1;
 let currentActivityYear = new Date().getFullYear();
 let pendingImageBlob = null;
@@ -40,8 +42,66 @@ let customChallenges = [];
 let currentChallengeCategory = 'mind';
 let justCompletedKeys = new Set();
 let showCustomChallengeForm = false;
+let challengeEdits = {};
+let editingChallengeKey = null;
 
 const statusLabels = { meglévő: 'Meglévő', olvasom: 'Olvasom', elolvasva: 'Elolvasva', tervezem: 'Tervezem', eves_terv: 'Éves terv', kivansaglista: 'Kívánságlista' };
+function storedStatusFromSelection(selection) {
+  if (selection.startsWith('eves_terv_')) return 'eves_terv';
+  if (selection.startsWith('elolvasva_')) return 'elolvasva';
+  return selection;
+}
+function selectionFromBook(book) {
+  if (book.status === 'eves_terv') return {
+    category: book.fromTbr ? 'kivansaglista' : 'meglévő',
+    detail: book.fromTbr ? 'eves_terv_kivansaglista' : 'eves_terv_meglevo'
+  };
+  if (book.status === 'olvasom') return { category: 'meglévő', detail: 'olvasom' };
+  if (book.status === 'elolvasva') return { category: 'meglévő', detail: 'elolvasva_meglevo' };
+  if (book.status === 'kivansaglista') return { category: 'kivansaglista', detail: 'kivansaglista' };
+  return { category: 'meglévő', detail: 'meglévő' };
+}
+function parseSeriesEntry(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/^(.*?)(?:\s+#?(\d+))\.?$/);
+  return match && match[1].trim()
+    ? { name: match[1].trim(), number: parseInt(match[2], 10) }
+    : { name: text, number: null };
+}
+function formatSeriesEntry(value) {
+  const { name, number } = parseSeriesEntry(value);
+  return number ? `${name} ${number}.` : name;
+}
+function seriesNameKey(value) {
+  return String(value || '').trim().toLocaleLowerCase('hu-HU');
+}
+function syncStatusDetails(selectedDetail = '') {
+  const category = document.getElementById('f-status').value;
+  const wrap = document.getElementById('f-status-detail-wrap');
+  const detail = document.getElementById('f-status-detail');
+  const options = category === 'meglévő' ? [
+    ['meglévő', 'Meglévő'],
+    ['olvasom', 'Olvasom'],
+    ['elolvasva_meglevo', 'Elolvasva'],
+    ['eves_terv_meglevo', 'Éves terv']
+  ] : category === 'kivansaglista' ? [
+    ['kivansaglista', 'Kívánságlista'],
+    ['eves_terv_kivansaglista', 'Éves terv']
+  ] : [];
+  wrap.style.display = options.length ? 'block' : 'none';
+  detail.innerHTML = options.map(([value, label]) => `<option value="${value}">${label}</option>`).join('');
+  if (options.some(([value]) => value === selectedDetail)) detail.value = selectedDetail;
+  updateStatusDependentFields();
+}
+function selectedStatusForBookForm() {
+  const category = document.getElementById('f-status').value;
+  return category === 'elolvasva' ? 'elolvasva' : document.getElementById('f-status-detail').value;
+}
+function updateStatusDependentFields() {
+  const selection = selectedStatusForBookForm();
+  document.getElementById('olvasomFields').style.display = selection === 'olvasom' ? 'grid' : 'none';
+  document.getElementById('planFields').style.display = selection.startsWith('eves_terv_') ? 'grid' : 'none';
+}
 const GENRES = ['Romantikus', 'Thriller', 'Krimi', 'Horror', 'Fantasy', 'Erotikus', 'Sci-fi', 'Ifjúsági', 'Ismeretterjesztő', 'Önfejlesztő', 'Pszichológia', 'Szépirodalom', 'Történelmi', 'Misztikus', 'Regény', 'Novella', 'Vers', 'Memoár', 'Mese'];
 const MONTH_NAMES = ['Január', 'Február', 'Március', 'Április', 'Május', 'Június', 'Július', 'Augusztus', 'Szeptember', 'Október', 'November', 'December'];
 
@@ -88,7 +148,7 @@ const CHALLENGES = [
   { key: 'books_15', category: 'books', name: '15 könyv', desc: 'Olvass el 15 könyvet.', target: 15, unit: 'könyv', reward: '2 új könyv' },
   { key: 'books_30', category: 'books', name: '30 könyv', desc: 'Olvass el 30 könyvet.', target: 30, unit: 'könyv', reward: 'Különleges könyv' },
   { key: 'books_50', category: 'books', name: '50 könyv', desc: 'Olvass el 50 könyvet.', target: 50, unit: 'könyv', reward: 'E-reader' },
-  { key: 'evening_10', category: 'evening', name: 'Esti olvasás', desc: '10 este, amikor legalább 15 oldalt olvastál.', target: 10, unit: 'este', reward: 'Manikűr' },
+  { key: 'evening_10', category: 'evening', name: '15 oldalas napok', desc: 'Olvass legalább 15 oldalt 10 különböző napon.', target: 10, unit: 'nap', reward: 'Manikűr' },
   { key: 'time_30x30', category: 'time', name: 'Olvasással töltött idő', desc: '30 alkalommal legalább 30 perc olvasás.', target: 30, unit: 'alkalom', reward: 'Sushi' },
   { key: 'tbr_1', category: 'tbr', name: 'Régóta halogatott könyv', desc: 'Fejezd be a kiválasztott, régóta halogatott könyvet.', target: 1, unit: 'könyv', reward: 'Új gyertya', pickBook: true },
   { key: 'tbr_3', category: 'tbr', name: '3 TBR könyv', desc: 'Olvass el 3 könyvet a TBR-listádról.', target: 3, unit: 'könyv', reward: 'Pedikűr' },
@@ -96,6 +156,27 @@ const CHALLENGES = [
   { key: 'genre_3', category: 'genre', name: '3 különböző műfaj', desc: 'Olvass el legalább 3 különböző műfajt.', target: 3, unit: 'műfaj', reward: 'Brunch' },
   { key: 'genre_5', category: 'genre', name: '5 különböző műfaj', desc: 'Olvass el legalább 5 különböző műfajt.', target: 5, unit: 'műfaj', reward: 'Új ruhadarab' }
 ];
+
+function challengeEditStorageKey() {
+  return currentUser ? `reading-journal-challenge-edits:${currentUser.id}` : null;
+}
+function loadChallengeEdits() {
+  try {
+    const raw = challengeEditStorageKey();
+    challengeEdits = raw ? JSON.parse(localStorage.getItem(raw) || '{}') : {};
+  } catch { challengeEdits = {}; }
+}
+function getConfiguredChallenges() {
+  return CHALLENGES.map(ch => ({ ...ch, ...(challengeEdits[ch.key] || {}) }));
+}
+function localDateString(date = new Date()) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+function bookCompletionDate(book) {
+  if (book.date) return book.date;
+  if (!book.createdAt) return null;
+  return localDateString(new Date(book.createdAt));
+}
 
 function computeStreak(threshold, startDate) {
   let count = 0;
@@ -113,6 +194,7 @@ function computeStreak(threshold, startDate) {
 }
 
 function computeChallengeProgress(ch) {
+  if (isChallengeMilestoneLocked(ch.key)) return 0;
   const state = challengeState[ch.key];
   const startDate = state ? state.start_date : null;
 
@@ -127,10 +209,15 @@ function computeChallengeProgress(ch) {
       return books.filter(b => b.status === 'elolvasva' && (!startDate || (b.date && b.date >= startDate)))
         .reduce((s, b) => s + (b.pages || 0), 0);
     case 'books':
-      return books.filter(b => b.status === 'elolvasva' && (!startDate || (b.date && b.date >= startDate))).length;
+      if ((ch.key === 'books_30' || ch.key === 'books_50') && !startDate) return 0;
+      return books.filter(b => {
+        if (b.status !== 'elolvasva') return false;
+        const completedDate = bookCompletionDate(b);
+        return !startDate || (completedDate && completedDate >= startDate);
+      }).length;
     case 'evening':
       return Object.entries(readingLog).filter(([date, pages]) =>
-        (!startDate || date >= startDate) && readingLogMeta[date] && readingLogMeta[date].isEvening && pages >= 15
+        (!startDate || date >= startDate) && pages >= 15
       ).length;
     case 'time':
       return Object.entries(readingLogMeta).filter(([date, meta]) =>
@@ -152,6 +239,20 @@ function computeChallengeProgress(ch) {
     default:
       return 0;
   }
+}
+
+function isChallengeMilestoneLocked(key) {
+  const state = challengeState[key];
+  if (['books_30', 'books_50'].includes(key)) return !state?.start_date;
+  const previousKey = {
+    pages_500: 'pages_100',
+    pages_750: 'pages_500',
+    pages_1000: 'pages_750'
+  }[key];
+  if (!previousKey) return false;
+  if (!state?.start_date) return true;
+  const previousChallenge = getConfiguredChallenges().find(challenge => challenge.key === previousKey);
+  return !previousChallenge || computeChallengeProgress(previousChallenge) < previousChallenge.target;
 }
 
 const BINGO_ITEMS = [
@@ -251,8 +352,8 @@ function pickIcon(text) {
 
 /* ============ THEME ============ */
 const themes = [
-  { id: 't1', text: '#660626', base: '#b9d696' },
-  { id: 't2', text: '#00737d', base: '#ffbacf' },
+  { id: 't1', text: '#feffe0', base: '#72b7f3' },
+  { id: 't2', text: '#7b003d', base: '#5d9ffc' },
   { id: 't3', text: '#ffb3d9', base: '#404e9c' },
   { id: 't4', text: '#333333', base: '#f7f7f7' },
   { id: 't5', text: '#f5e9d0', base: '#bf2c56' },
@@ -334,6 +435,18 @@ function applyTheme(themeId) {
   const theme = themes.find(t => t.id === themeId) || themes[0];
   currentTheme = theme.id;
   const root = document.documentElement.style;
+  document.body.dataset.theme = theme.id;
+  const pageWallpaper = {
+    t1: "url('/sky-bg.png')",
+    t2: "url('/blue-glitter-bg.png')",
+    t3: "url('/galaxy-bg.png')",
+    t4: "url('/monochrome-bg.png')",
+    t5: "url('/pink-waves-bg.png')",
+    t6: "url('/flower-bg.png')",
+    t7: "url('/neon-stars-bg.png')",
+    t8: "url('/halloween-bg.png')"
+  }[theme.id] || 'none';
+  root.setProperty('--page-wallpaper', pageWallpaper);
 
   root.setProperty('--paper', theme.base);
   root.setProperty('--paper-dark', mix(theme.base, theme.text, 0.12));
@@ -355,7 +468,7 @@ function applyTheme(themeId) {
   root.setProperty('--activity-dark', mix(theme.text, '#000000', 0.4));
   root.setProperty('--vignette-color', `rgba(${c}, 0.045)`);
 
-  const patternFn = THEME_PATTERNS[theme.id];
+  const patternFn = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8'].includes(theme.id) ? null : THEME_PATTERNS[theme.id];
   if (patternFn) {
     const pattern = patternFn(theme.text);
     root.setProperty('--pattern-image', pattern.image);
@@ -445,6 +558,7 @@ async function mapWithConcurrencyLimit(items, limit, fn) {
 /* ============ DATA LOADING (Supabase) ============ */
 async function loadBooksAndLog() {
   if (!currentUser) return;
+  loadChallengeEdits();
 
   try {
     books = await bookService.listBooks(currentUser.id);
@@ -519,11 +633,8 @@ document.getElementById('f-image').addEventListener('change', async (e) => {
 });
 
 /* ============ ADD BOOK FORM ============ */
-document.getElementById('f-status').addEventListener('change', (e) => {
-  const v = e.target.value;
-  document.getElementById('olvasomFields').style.display = (v === 'olvasom') ? 'grid' : 'none';
-  document.getElementById('planFields').style.display = (v === 'eves_terv') ? 'grid' : 'none';
-});
+document.getElementById('f-status').addEventListener('change', () => syncStatusDetails());
+document.getElementById('f-status-detail').addEventListener('change', updateStatusDependentFields);
 
 function populatePlanMonthSelect() {
   const sel = document.getElementById('f-planmonth');
@@ -537,7 +648,7 @@ function populateGenreChecks() {
 function renderSeriesTags() {
   const wrap = document.getElementById('seriesTags');
   wrap.innerHTML = pendingSeries.map((s, i) => `
-    <span class="series-tag">${escapeHtml(s)}<button type="button" data-remove-series="${i}">×</button></span>
+    <span class="series-tag">${escapeHtml(formatSeriesEntry(s))}<button type="button" data-remove-series="${i}" aria-label="Sorozat eltávolítása">×</button></span>
   `).join('');
   wrap.querySelectorAll('[data-remove-series]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -547,17 +658,40 @@ function renderSeriesTags() {
   });
 }
 
-document.getElementById('addSeriesBtn').addEventListener('click', () => {
-  const input = document.getElementById('f-series-input');
-  const val = input.value.trim();
-  if (val && !pendingSeries.includes(val)) {
-    pendingSeries.push(val);
+function commitSeriesInputs(showEmptyError = false) {
+  const nameInput = document.getElementById('f-series-input');
+  const numberInput = document.getElementById('f-series-number');
+  const name = nameInput.value.trim();
+  const numberValue = numberInput.value.trim();
+  const number = numberValue ? parseInt(numberValue, 10) : null;
+  if (!name && !numberValue) {
+    if (showEmptyError) { showToast('Add meg a sorozat nevét.', 'error'); nameInput.focus(); return false; }
+    return true;
+  }
+  if (!name) { showToast('Add meg a sorozat nevét.', 'error'); nameInput.focus(); return false; }
+  if (numberValue && (!Number.isInteger(number) || number < 1)) {
+    showToast('A sorszám legalább 1 legyen.', 'error'); numberInput.focus(); return false;
+  }
+  const value = number ? `${name} ${number}.` : name;
+  const duplicate = pendingSeries.some(item => {
+    const parsed = parseSeriesEntry(item);
+    return seriesNameKey(parsed.name) === seriesNameKey(name) && parsed.number === number;
+  });
+  if (!duplicate) {
+    pendingSeries.push(value);
     renderSeriesTags();
   }
-  input.value = '';
-  input.focus();
+  nameInput.value = '';
+  numberInput.value = '';
+  return true;
+}
+document.getElementById('addSeriesBtn').addEventListener('click', () => {
+  if (commitSeriesInputs(true)) document.getElementById('f-series-input').focus();
 });
 document.getElementById('f-series-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addSeriesBtn').click(); }
+});
+document.getElementById('f-series-number').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addSeriesBtn').click(); }
 });
 
@@ -571,11 +705,13 @@ function resetAddForm() {
   document.getElementById('f-pages').value = '';
   document.getElementById('f-rating').value = '0';
   document.getElementById('f-date').value = '';
-  document.getElementById('f-note').value = '';
   document.getElementById('f-status').value = 'meglévő';
+  syncStatusDetails('meglévő');
   document.getElementById('f-pagesread').value = '';
   document.getElementById('f-planyear').value = '';
   document.getElementById('f-image').value = '';
+  document.getElementById('f-series-input').value = '';
+  document.getElementById('f-series-number').value = '';
   document.getElementById('f-image-preview').style.display = 'none';
   document.querySelectorAll('#genreChecks input:checked').forEach(c => c.checked = false);
   document.getElementById('olvasomFields').style.display = 'none';
@@ -589,7 +725,21 @@ function resetAddForm() {
   document.getElementById('addBtn').textContent = 'Hozzáadás a naplóhoz';
   document.getElementById('addSectionHeading').textContent = 'Új könyv hozzáadása';
   document.getElementById('cancelEditBtn').style.display = 'none';
+  setAddBookFormOpen(false);
 }
+
+function setAddBookFormOpen(isOpen) {
+  const section = document.getElementById('addBookSection');
+  section.style.display = isOpen ? 'block' : 'none';
+  document.getElementById('toggleAddBookBtn').textContent = isOpen ? '✕ Bezárás' : '+ Új könyv hozzáadása';
+}
+
+document.getElementById('toggleAddBookBtn').addEventListener('click', () => {
+  const section = document.getElementById('addBookSection');
+  const isOpen = section.style.display !== 'none';
+  setAddBookFormOpen(!isOpen);
+  if (!isOpen) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 
 function startEditBook(id) {
   const b = books.find(x => x.id === id);
@@ -599,10 +749,11 @@ function startEditBook(id) {
   document.getElementById('f-title').value = b.title || '';
   document.getElementById('f-author').value = b.author || '';
   document.getElementById('f-pages').value = b.pages || '';
-  document.getElementById('f-status').value = b.status || 'meglévő';
+  const statusChoice = selectionFromBook(b);
+  document.getElementById('f-status').value = statusChoice.category;
+  syncStatusDetails(statusChoice.detail);
   document.getElementById('f-rating').value = b.rating || 0;
   document.getElementById('f-date').value = b.date || '';
-  document.getElementById('f-note').value = b.note || '';
   document.getElementById('f-pagesread').value = b.pagesRead || '';
   document.getElementById('f-planmonth').value = b.plannedMonth || 1;
   document.getElementById('f-planyear').value = b.plannedYear || '';
@@ -613,10 +764,10 @@ function startEditBook(id) {
   const preview = document.getElementById('f-image-preview');
   if (b.coverUrl) { preview.src = b.coverUrl; preview.style.display = 'block'; }
   else { preview.style.display = 'none'; }
-  document.getElementById('olvasomFields').style.display = (b.status === 'olvasom') ? 'grid' : 'none';
-  document.getElementById('planFields').style.display = (b.status === 'eves_terv') ? 'grid' : 'none';
+  updateStatusDependentFields();
   document.getElementById('addBtn').textContent = 'Módosítások mentése';
   document.getElementById('addSectionHeading').textContent = 'Könyv szerkesztése';
+  setAddBookFormOpen(true);
   document.getElementById('cancelEditBtn').style.display = 'inline-block';
   document.querySelector('.add-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -626,33 +777,40 @@ async function addBook() {
   const title = document.getElementById('f-title').value.trim();
   const author = document.getElementById('f-author').value.trim();
   const pages = parseInt(document.getElementById('f-pages').value) || 0;
-  const status = document.getElementById('f-status').value;
+  const statusSelection = selectedStatusForBookForm();
+  const status = storedStatusFromSelection(statusSelection);
   const rating = parseInt(document.getElementById('f-rating').value) || 0;
   const date = document.getElementById('f-date').value;
-  const note = document.getElementById('f-note').value.trim();
+  const note = editingId ? (books.find(b => b.id === editingId)?.note || '') : '';
   const pagesRead = parseInt(document.getElementById('f-pagesread').value) || 0;
   const plannedMonth = parseInt(document.getElementById('f-planmonth').value) || null;
   const plannedYear = parseInt(document.getElementById('f-planyear').value) || new Date().getFullYear();
   const genres = Array.from(document.querySelectorAll('#genreChecks input:checked')).map(c => c.value);
-  const series = pendingSeries.slice();
 
   if (!title) { showToast('Add meg legalább a könyv címét.', 'error'); return; }
+  if (!commitSeriesInputs()) return;
+  const series = pendingSeries.slice();
+  if (date) {
+    const parsedDate = new Date(`${date}T00:00:00`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsedDate.getTime()) || localDateString(parsedDate) !== date) {
+      showToast('A dátum formátuma ÉÉÉÉ-HH-NN legyen, például 2026-05-18.', 'error');
+      return;
+    }
+  }
   if (!currentUser) { showToast('Nincs bejelentkezve felhasználó.', 'error'); return; }
 
-  let fromTbrValue;
-  if (editingId) {
-    const existingBook = books.find(b => b.id === editingId);
-    fromTbrValue = existingBook ? !!existingBook.fromTbr : false;
-  } else {
-    fromTbrValue = !(status === 'olvasom' || status === 'elolvasva');
-  }
+  const fromTbrValue = ['kivansaglista', 'eves_terv_kivansaglista'].includes(statusSelection);
 
+  const existingBook = editingId ? books.find(b => b.id === editingId) : null;
+  const completedPlannedBook = status === 'elolvasva'
+    && existingBook?.plannedMonth
+    && existingBook?.plannedYear;
   const fields = {
     title, author, pages, status, rating, date, note, genres, series,
     fromTbr: fromTbrValue,
     pagesRead: status === 'olvasom' ? pagesRead : 0,
-    plannedMonth: status === 'eves_terv' ? plannedMonth : null,
-    plannedYear: status === 'eves_terv' ? plannedYear : null
+    plannedMonth: status === 'eves_terv' ? plannedMonth : (completedPlannedBook ? existingBook.plannedMonth : null),
+    plannedYear: status === 'eves_terv' ? plannedYear : (completedPlannedBook ? existingBook.plannedYear : null)
   };
 
   const addBtn = document.getElementById('addBtn');
@@ -686,7 +844,8 @@ async function addBook() {
     render();
   } catch (e) {
     console.error(e);
-    showToast('Nem sikerült menteni a könyvet. Ellenőrizd az internetkapcsolatot.', 'error');
+    const reason = e && typeof e.message === 'string' ? e.message : 'Ellenőrizd az internetkapcsolatot.';
+    showToast(`Nem sikerült menteni a könyvet: ${reason}`, 'error');
   } finally {
     addBtn.disabled = false;
     if (addBtn.textContent === 'Mentés...') addBtn.textContent = originalLabel;
@@ -786,30 +945,32 @@ function openActivityPopover(dayEl) {
   const existingMeta = readingLogMeta[date] || {};
   pop.innerHTML = `
     <div class="pop-date">${date}</div>
-    <input type="number" min="0" id="popPagesInput" placeholder="Hány oldalt olvastál?" value="${existingPages !== undefined ? existingPages : ''}">
-    <label style="display:flex; align-items:center; gap:6px; font-size:0.65rem;">
-      <input type="checkbox" id="popEveningInput" ${existingMeta.isEvening ? 'checked' : ''}> Este olvastam
-    </label>
-    <input type="number" min="0" id="popMinutesInput" placeholder="Hány percig olvastál? (opcionális)" value="${existingMeta.durationMinutes || ''}">
+    <label class="pop-field-label" for="popPagesInput">Hány oldalt olvastál?</label>
+    <input type="number" min="0" id="popPagesInput" placeholder="Oldalszám" value="${existingPages !== undefined ? existingPages : ''}">
+    <label class="pop-field-label" for="popMinutesInput">Hány percig olvastál? (opcionális)</label>
+    <input type="number" min="0" id="popMinutesInput" placeholder="Perc" value="${existingMeta.durationMinutes || ''}">
     <div class="pop-row">
       <button class="primary" id="popSaveBtn">Mentés</button>
       <button id="popDeleteBtn">Törlés</button>
     </div>
   `;
   document.body.appendChild(pop);
-  const top = Math.min(window.innerHeight - 140, rect.bottom + 8);
-  const left = Math.min(window.innerWidth - 200, rect.left);
+  const topBelow = rect.bottom + 8;
+  const top = topBelow + pop.offsetHeight <= window.innerHeight - 8
+    ? topBelow
+    : Math.max(8, rect.top - pop.offsetHeight - 8);
+  const left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, rect.left));
   pop.style.top = top + 'px';
   pop.style.left = left + 'px';
 
   document.getElementById('popSaveBtn').addEventListener('click', async () => {
     const val = parseInt(document.getElementById('popPagesInput').value);
-    const isEvening = document.getElementById('popEveningInput').checked;
     const minutesVal = parseInt(document.getElementById('popMinutesInput').value);
     const durationMinutes = isNaN(minutesVal) ? 0 : minutesVal;
     if (!isNaN(val) && val >= 0) {
       readingLog[date] = val;
-      readingLogMeta[date] = { isEvening, durationMinutes };
+      const isEvening = !!existingMeta.isEvening;
+      readingLogMeta[date] = { ...existingMeta, isEvening, durationMinutes };
       renderActivity();
       try { await logService.upsertReadingLogEntry(currentUser.id, date, val, { isEvening, durationMinutes }); }
       catch (e) { console.error(e); showToast('Nem sikerült menteni az olvasott oldalszámot.', 'error'); }
@@ -849,7 +1010,10 @@ document.getElementById('monthFilter').addEventListener('change', (e) => {
 /* ============ RENDER: ÉV / MŰFAJ SZŰRŐK ============ */
 function populateYearFilter() {
   const select = document.getElementById('yearFilter');
-  const years = [...new Set(books.map(b => getYear(b.date)).filter(y => y !== null))].sort((a, b) => b - a);
+  const years = [...new Set([
+    ...books.map(b => getYear(b.date)).filter(y => y !== null),
+    ...books.map(b => b.plannedYear).filter(y => y != null)
+  ])].sort((a, b) => b - a);
   const prevValue = currentYearFilter;
   select.innerHTML = '<option value="mind">Minden év</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
   if (years.includes(parseInt(prevValue))) select.value = prevValue;
@@ -877,14 +1041,17 @@ document.getElementById('genreFilter').addEventListener('change', (e) => {
 function renderShelf() {
   let read = books.filter(b =>
     b.status === 'meglévő' ||
+    b.status === 'tervezem' ||
     b.status === 'olvasom' ||
     b.status === 'elolvasva' ||
-    b.status === 'eves_terv'
+    (b.status === 'eves_terv' && !b.fromTbr)
   );
   if (currentYearFilter !== 'mind') {
-    read = read.filter(b => b.status !== 'elolvasva' || getYear(b.date) === parseInt(currentYearFilter));
+    read = read.filter(b => b.status === 'eves_terv'
+      ? b.plannedYear === parseInt(currentYearFilter)
+      : b.status !== 'elolvasva' || getYear(b.date) === parseInt(currentYearFilter));
   }
-if (shelfSearchQuery) {
+  if (shelfSearchQuery) {
     read = read.filter(b => {
       const title = (b.title || '').toLowerCase().replace(/\s+/g, ' ');
       const author = (b.author || '').toLowerCase().replace(/\s+/g, ' ');
@@ -892,12 +1059,13 @@ if (shelfSearchQuery) {
     });
   }
 
-  const shelfOrder = { olvasom: 0, 'meglévő': 1, tervezem: 1, eves_terv: 1, elolvasva: 2 };
-  read = read.slice().sort((a, b) => (shelfOrder[a.status] ?? 1) - (shelfOrder[b.status] ?? 1));
-
   const shelf = document.getElementById('shelf');
-  
-  shelf.innerHTML = read.map(b => {
+  if (!read.length) {
+    shelf.innerHTML = '<div class="shelf-empty">Nincs megjeleníthető könyv ezen a polcon.</div>';
+    return;
+  }
+
+  const renderBook = b => {
     const cover = b.coverUrl
       ? `<img src="${b.coverUrl}" alt="${escapeHtml(b.title)} borító">`
       : `<span class="shelf-cover-fallback">${escapeHtml((b.title || '?').trim().charAt(0).toUpperCase())}</span>`;
@@ -911,6 +1079,19 @@ if (shelfSearchQuery) {
       <div class="shelf-book-title" data-edit-id="${b.id}">${escapeHtml(b.title)}</div>
       ${b.author ? `<div class="shelf-book-author">${escapeHtml(b.author)}</div>` : ''}
     </div>`;
+  };
+  const rows = [
+    { status: 'olvasom', label: 'Éppen olvasom' },
+    { status: 'eves_terv', label: 'Éves terv' },
+    { status: 'meglévő', label: 'Meglévő' },
+    { status: 'elolvasva', label: 'Elolvasva' }
+  ];
+  shelf.innerHTML = rows.map(row => {
+    const rowBooks = read.filter(b => row.status === 'meglévő'
+      ? b.status === 'meglévő' || b.status === 'tervezem'
+      : b.status === row.status);
+    if (!rowBooks.length) return '';
+    return `<div class="shelf-row"><div class="shelf-row-label">${row.label}</div><div class="shelf-row-books">${rowBooks.map(renderBook).join('')}</div></div>`;
   }).join('');
 }
 
@@ -933,13 +1114,31 @@ document.getElementById('shelf').addEventListener('click', (e) => {
 
 /* ============ RENDER: KÖNYVLISTA ============ */
 function renderList() {
-  let filtered = currentFilter === 'mind' ? books.slice() : books.filter(b => b.status === currentFilter);
-  if (currentYearFilter !== 'mind') {
+  let filtered = currentSeriesFilter
+    ? books.filter(b => Array.isArray(b.series) && b.series.some(series => seriesNameKey(parseSeriesEntry(series).name) === seriesNameKey(currentSeriesFilter)))
+    : (currentFilter === 'mind' ? books.slice() : books.filter(b => b.status === currentFilter));
+  if (!currentSeriesFilter && currentYearFilter !== 'mind') {
     filtered = filtered.filter(b => getYear(b.date) === parseInt(currentYearFilter) || (b.status === 'eves_terv' && b.plannedYear === parseInt(currentYearFilter)));
   }
-  if (currentGenreFilter !== 'mind') {
+  if (!currentSeriesFilter && currentGenreFilter !== 'mind') {
     filtered = filtered.filter(b => Array.isArray(b.genres) && b.genres.includes(currentGenreFilter));
   }
+  if (currentSeriesFilter) {
+    const seriesNumber = book => Math.min(...(book.series || [])
+      .map(parseSeriesEntry)
+      .filter(item => seriesNameKey(item.name) === seriesNameKey(currentSeriesFilter) && item.number !== null)
+      .map(item => item.number), Number.POSITIVE_INFINITY);
+    filtered.sort((a, b) => seriesNumber(a) - seriesNumber(b) || (a.title || '').localeCompare(b.title || '', 'hu'));
+  }
+
+  const seriesNotice = document.getElementById('seriesFilterNotice');
+  seriesNotice.innerHTML = currentSeriesFilter
+    ? `<div class="series-filter-notice">Sorozat: <strong>${escapeHtml(currentSeriesFilter)}</strong><button type="button" data-clear-series-filter>Szűrés törlése ×</button></div>`
+    : '';
+  seriesNotice.querySelector('[data-clear-series-filter]')?.addEventListener('click', () => {
+    currentSeriesFilter = '';
+    renderList();
+  });
 
   const listEl = document.getElementById('bookList');
   if (filtered.length === 0) {
@@ -947,11 +1146,19 @@ function renderList() {
     return;
   }
   listEl.innerHTML = filtered.map(b => {
+    const isWishlistBook = b.status === 'kivansaglista';
     const stars = b.rating > 0 ? '<span class="stars">' + '★'.repeat(b.rating) + '☆'.repeat(5 - b.rating) + '</span>' : '';
     const noteHtml = b.note ? `<div class="book-note quote">${escapeHtml(b.note)}</div>` : '';
     const dateHtml = b.date ? `<span>${formatDate(b.date)}</span>` : '';
     const genreTags = (b.genres || []).map(g => `<span class="genre-tag">${escapeHtml(g)}</span>`).join(' ');
-    const seriesTags = (b.series || []).map(s => `<span class="genre-tag">📚 ${escapeHtml(s)}</span>`).join(' ');
+    const seriesTags = (b.series || []).map(s => {
+      const series = parseSeriesEntry(s);
+      return `<button type="button" class="series-filter-tag" data-series-filter="${escapeHtml(series.name)}" aria-pressed="${seriesNameKey(currentSeriesFilter) === seriesNameKey(series.name)}">📚 ${escapeHtml(formatSeriesEntry(s))}</button>`;
+    }).join(' ');
+    const wishlistCover = isWishlistBook ? `
+      <div class="wishlist-cover">
+        ${b.coverUrl ? `<img src="${b.coverUrl}" alt="${escapeHtml(b.title)} borító">` : `<span>${escapeHtml((b.title || '?').trim().charAt(0).toUpperCase())}</span>`}
+      </div>` : '';
     const progressHtml = b.status === 'olvasom' ? `
       <div class="progress-row">
         <input type="number" min="0" data-progress-id="${b.id}" value="${b.pagesRead || 0}">
@@ -959,8 +1166,9 @@ function renderList() {
       </div>` : '';
     const planHtml = b.status === 'eves_terv' ? `<span>${MONTH_NAMES[(b.plannedMonth || 1) - 1]} ${b.plannedYear || ''}</span>` : '';
     return `
-    <div class="book-card">
-      <div class="book-color-tag"></div>
+    <div class="book-card${isWishlistBook ? ' wishlist-book-card' : ''}">
+      ${wishlistCover}
+      ${isWishlistBook ? '' : '<div class="book-color-tag"></div>'}
       <div class="book-main">
         <div class="book-top">
           <div>
@@ -991,6 +1199,18 @@ function renderList() {
       if (confirm('Biztosan törlöd ezt a könyvet a naplóból?')) deleteBook(btn.dataset.del);
     });
   });
+  listEl.querySelectorAll('[data-series-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentSeriesFilter = btn.dataset.seriesFilter;
+      currentFilter = 'mind';
+      currentYearFilter = 'mind';
+      currentGenreFilter = 'mind';
+      document.getElementById('yearFilter').value = 'mind';
+      document.getElementById('genreFilter').value = 'mind';
+      document.querySelectorAll('#tabs .tab').forEach(tab => tab.classList.toggle('active', tab.dataset.filter === 'mind'));
+      renderList();
+    });
+  });
   listEl.querySelectorAll('[data-progress-id]').forEach(inp => {
     inp.addEventListener('change', async () => {
       const book = books.find(b => b.id === inp.dataset.progressId);
@@ -1013,29 +1233,21 @@ function renderList() {
 /* ============ RENDER: ÉVES TERV ============ */
 function renderPlanView() {
   const el = document.getElementById('planView');
-  let planBooks = books.filter(b => b.status === 'eves_terv');
-  if (currentYearFilter !== 'mind') {
-    planBooks = planBooks.filter(b => b.plannedYear === parseInt(currentYearFilter));
-  }
+  const nowYear = new Date().getFullYear();
+  const firstAvailableYear = 2026;
+  const lastAvailableYear = Math.max(nowYear + 5, ...books.map(b => b.plannedYear || 0));
+  const years = [...new Set([
+    ...Array.from({ length: lastAvailableYear - firstAvailableYear + 1 }, (_, i) => firstAvailableYear + i),
+    ...books.map(b => b.plannedYear).filter(y => y != null && y >= 2026)
+  ])].sort((a, b) => a - b);
+  if (!years.includes(currentPlanYear)) currentPlanYear = nowYear;
 
-  const years = currentYearFilter !== 'mind'
-    ? [parseInt(currentYearFilter)]
-    : [...new Set(planBooks.map(b => b.plannedYear).filter(y => y != null))].sort((a, b) => a - b);
-
-  if (years.length === 0) {
-    el.innerHTML = '<div class="plan-empty">Nincs tervezett könyv.</div>';
-    return;
-  }
-
-  el.innerHTML = years.map(year => {
-    const yearBooks = planBooks.filter(b => b.plannedYear === year);
-    const monthsHtml = MONTH_NAMES.map((name, idx) => {
+  const yearBooks = books.filter(b => ['eves_terv', 'elolvasva'].includes(b.status) && b.plannedYear === currentPlanYear);
+  const renderMonth = (name, idx) => {
       const monthNum = idx + 1;
       const monthBooks = yearBooks.filter(b => b.plannedMonth === monthNum);
       const totalPages = monthBooks.reduce((s, b) => s + (b.pages || 0), 0);
-      const bookItems = monthBooks.length
-        ? monthBooks.map(b => `<div class="plan-book-item">${escapeHtml(b.title)}${b.author ? ` <span class="pb-author">— ${escapeHtml(b.author)}</span>` : ''}</div>`).join('')
-        : '<div class="plan-empty">Nincs tervezett könyv.</div>';
+      const bookItems = monthBooks.map(b => `<div class="plan-book-item${b.status === 'elolvasva' ? ' is-read' : ''}">${escapeHtml(b.title)}${b.author ? ` <span class="pb-author">— ${escapeHtml(b.author)}</span>` : ''}</div>`).join('');
       return `
       <div class="plan-month">
         <div class="plan-month-header">
@@ -1044,13 +1256,22 @@ function renderPlanView() {
         </div>
         ${bookItems}
       </div>`;
-    }).join('');
-    return `
-    <div class="plan-year-block">
-      <div class="plan-year-heading">${year}</div>
-      ${monthsHtml}
+  };
+  const firstHalf = MONTH_NAMES.slice(0, 6).map(renderMonth).join('');
+  const secondHalf = MONTH_NAMES.slice(6).map((name, idx) => renderMonth(name, idx + 6)).join('');
+  el.innerHTML = `
+    <div class="plan-year-select-wrap">
+      <label for="planYearFilter">Év</label>
+      <select id="planYearFilter">${years.map(y => `<option value="${y}" ${y === currentPlanYear ? 'selected' : ''}>${y}</option>`).join('')}</select>
+    </div>
+    <div class="plan-month-columns">
+      <div class="plan-month-column">${firstHalf}</div>
+      <div class="plan-month-column">${secondHalf}</div>
     </div>`;
-  }).join('');
+  document.getElementById('planYearFilter').addEventListener('change', e => {
+    currentPlanYear = parseInt(e.target.value);
+    renderPlanView();
+  });
 }
 
 /* ============ RENDER: KERESÉS ============ */
@@ -1160,7 +1381,7 @@ document.getElementById('tabs').addEventListener('click', (e) => {
 
 /* ============ KIHÍVÁSOK ============ */
 function renderChallengesDashboard() {
-  const completedCount = CHALLENGES.filter(ch => computeChallengeProgress(ch) >= ch.target).length;
+  const completedCount = getConfiguredChallenges().filter(ch => computeChallengeProgress(ch) >= ch.target).length;
   const totalPages = books.filter(b => b.status === 'elolvasva').reduce((s, b) => s + (b.pages || 0), 0);
   const totalBooks = books.filter(b => b.status === 'elolvasva').length;
   const streak = Math.max(computeStreak(1), 0);
@@ -1182,11 +1403,17 @@ function renderChallengeCard(ch) {
   const progress = computeChallengeProgress(ch);
   const isCompleted = progress >= ch.target;
   const state = challengeState[ch.key];
+  const isLockedMilestone = isChallengeMilestoneLocked(ch.key);
   const isClaimed = !!(state && state.reward_claimed);
   const pct = Math.min(100, Math.round((progress / ch.target) * 100));
-  const statusLabel = isCompleted ? '🎉 Teljesítve' : (progress > 0 ? '📖 Folyamatban' : '🔒 Zárolva');
+  const statusLabel = isLockedMilestone ? '🔒 Feloldásra vár' : (isCompleted ? '🎉 Teljesítve' : (progress > 0 ? '📖 Folyamatban' : '🔒 Zárolva'));
   const justCompletedClass = justCompletedKeys.has(ch.key) ? ' just-completed' : '';
   const startDateVal = state && state.start_date ? state.start_date : '';
+  const nextMilestone = {
+    books_15: 'books_30', books_30: 'books_50',
+    pages_100: 'pages_500', pages_500: 'pages_750', pages_750: 'pages_1000'
+  }[ch.key];
+  const canUnlockNext = isCompleted && nextMilestone && isChallengeMilestoneLocked(nextMilestone);
 
   let pickHtml = '';
   if (ch.pickBook && !isClaimed) {
@@ -1218,10 +1445,10 @@ function renderChallengeCard(ch) {
       </div>`;
   }
 
-  const startDateHtml = (!ch.pickBook && ch.category !== 'genre' && !ch.custom) ? `
+  const startDateHtml = (!isLockedMilestone && !ch.pickBook && ch.category !== 'genre' && !ch.custom) ? `
     <div class="challenge-start-date">
       <label for="start-${ch.key}">Kezdés:</label>
-      <input type="date" id="start-${ch.key}" data-start-challenge="${ch.key}" value="${startDateVal}">
+      <input type="text" inputmode="numeric" maxlength="10" placeholder="2026-05-18" id="start-${ch.key}" data-start-challenge="${ch.key}" value="${escapeHtml(startDateVal)}">
     </div>` : '';
 
   const manualControls = ch.custom ? `
@@ -1238,9 +1465,25 @@ function renderChallengeCard(ch) {
     : '';
 
   const deleteBtn = ch.custom ? `<button type="button" class="challenge-delete-btn" data-delete-custom="${ch.id}" title="Törlés">✕</button>` : '';
+  const editForm = editingChallengeKey === ch.key ? `
+    <div class="challenge-edit-form">
+      <label>Név<input type="text" data-edit-field="name" value="${escapeHtml(ch.name)}"></label>
+      <label>Leírás<textarea data-edit-field="desc" rows="2">${escapeHtml(ch.desc)}</textarea></label>
+      <label>Cél<input type="number" min="1" data-edit-field="target" value="${ch.target}"></label>
+      <label>Mértékegység<input type="text" data-edit-field="unit" value="${escapeHtml(ch.unit)}"></label>
+      <label>Jutalom<input type="text" data-edit-field="reward" value="${escapeHtml(ch.reward)}"></label>
+      <div class="challenge-edit-actions">
+        <button type="button" data-save-challenge="${ch.key}">Mentés</button>
+        <button type="button" data-cancel-challenge-edit>Mégse</button>
+      </div>
+    </div>` : `
+    <div class="challenge-inline-actions">
+      <button type="button" data-edit-challenge="${ch.key}">Szerkesztés</button>
+      ${canUnlockNext ? `<button type="button" class="challenge-unlock-btn" data-unlock-challenge="${nextMilestone}">${nextMilestone.startsWith('pages_') ? `${getConfiguredChallenges().find(item => item.key === nextMilestone)?.target || ''} oldalas cél feloldása` : `${nextMilestone === 'books_30' ? '30' : '50'} könyves cél feloldása`}</button>` : ''}
+    </div>`;
 
   return `
-  <div class="challenge-card ${isCompleted ? 'completed' : (progress === 0 ? 'locked' : '')}${justCompletedClass}">
+  <div class="challenge-card ${isCompleted ? 'completed' : (progress === 0 || isLockedMilestone ? 'locked' : '')}${justCompletedClass}">
     ${deleteBtn}
     <div class="challenge-top">
       <span class="challenge-name">${escapeHtml(ch.name)}</span>
@@ -1250,13 +1493,16 @@ function renderChallengeCard(ch) {
     ${pickHtml}
     ${genrePickHtml}
     ${startDateHtml}
-    ${ch.custom
+    ${isLockedMilestone
+      ? '<div class="plan-empty">Az előző könyvcél teljesítése után oldható fel.</div>'
+      : ch.custom
       ? manualControls
       : `<div class="challenge-progress-bar-wrap"><div class="challenge-progress-bar" style="width:${pct}%;"></div></div>
          <div class="challenge-progress-text"><span>${Math.min(progress, ch.target)} / ${ch.target} ${ch.unit}</span><span>${pct}%</span></div>`
     }
     <div class="challenge-reward">🎁 ${escapeHtml(ch.reward)}${isClaimed ? ' — beváltva' : ''}</div>
     ${claimBtn}
+    ${editForm}
   </div>`;
 }
 
@@ -1273,7 +1519,7 @@ function renderChallengesView() {
     reward: c.reward || '',
     custom: true
   }));
-  const allChallenges = [...CHALLENGES, ...customAsChallenges];
+  const allChallenges = [...getConfiguredChallenges(), ...customAsChallenges];
 
   const filtered = currentChallengeCategory === 'mind'
     ? allChallenges
@@ -1308,6 +1554,72 @@ function renderChallengesView() {
 
   el.querySelectorAll('[data-cat]').forEach(btn => {
     btn.addEventListener('click', () => { currentChallengeCategory = btn.dataset.cat; renderChallengesView(); });
+  });
+
+  el.querySelectorAll('[data-edit-challenge]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      editingChallengeKey = btn.dataset.editChallenge;
+      renderChallengesView();
+    });
+  });
+  el.querySelectorAll('[data-cancel-challenge-edit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      editingChallengeKey = null;
+      renderChallengesView();
+    });
+  });
+  el.querySelectorAll('[data-save-challenge]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const key = btn.dataset.saveChallenge;
+      const challenge = allChallenges.find(ch => ch.key === key);
+      const card = btn.closest('.challenge-card');
+      if (!challenge || !card) return;
+      const value = field => card.querySelector(`[data-edit-field="${field}"]`)?.value.trim() || '';
+      const name = value('name');
+      const target = parseInt(value('target'));
+      if (!name || !target || target < 1) {
+        showToast('A név és a célérték megadása kötelező.', 'error');
+        return;
+      }
+      const fields = { name, desc: value('desc'), target, unit: value('unit') || 'db', reward: value('reward') };
+      try {
+        if (challenge.custom) {
+          await challengeService.updateCustomChallenge(challenge.id, currentUser.id, {
+            name: fields.name,
+            description: fields.desc,
+            target: fields.target,
+            unit: fields.unit,
+            reward: fields.reward
+          });
+          customChallenges = await challengeService.loadCustomChallenges(currentUser.id);
+        } else {
+          challengeEdits[key] = fields;
+          const storageKey = challengeEditStorageKey();
+          if (storageKey) localStorage.setItem(storageKey, JSON.stringify(challengeEdits));
+        }
+        editingChallengeKey = null;
+        renderChallengesView();
+        showToast('A kihívás módosításai elmentve.', 'success');
+      } catch (e) {
+        console.error(e);
+        showToast('Nem sikerült menteni a kihívást.', 'error');
+      }
+    });
+  });
+
+  el.querySelectorAll('[data-unlock-challenge]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const key = btn.dataset.unlockChallenge;
+      try {
+        await challengeService.upsertChallengeState(currentUser.id, key, { start_date: localDateString() });
+        challengeState = await challengeService.loadChallengeState(currentUser.id);
+        renderChallengesView();
+        showToast('A következő könyves kihívás feloldva, a számláló 0-ról indul.', 'success');
+      } catch (e) {
+        console.error(e);
+        showToast('Nem sikerült feloldani a következő kihívást.', 'error');
+      }
+    });
   });
 
   document.getElementById('toggleCustomChallengeForm').addEventListener('click', () => {
@@ -1382,11 +1694,22 @@ function renderChallengesView() {
   el.querySelectorAll('[data-start-challenge]').forEach(inp => {
     inp.addEventListener('change', async () => {
       const key = inp.dataset.startChallenge;
+      const startDate = inp.value.trim();
+      const parsedDate = startDate ? new Date(`${startDate}T00:00:00`) : null;
+      if (startDate && (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || Number.isNaN(parsedDate.getTime()) || localDateString(parsedDate) !== startDate)) {
+        showToast('A dátum formátuma ÉÉÉÉ-HH-NN legyen, például 2026-05-18.', 'error');
+        inp.focus();
+        return;
+      }
       try {
-        await challengeService.upsertChallengeState(currentUser.id, key, { start_date: inp.value || null });
+        await challengeService.upsertChallengeState(currentUser.id, key, { start_date: startDate || null });
         challengeState = await challengeService.loadChallengeState(currentUser.id);
         renderChallengesView();
-      } catch (e) { console.error(e); showToast('Nem sikerült menteni a kezdő dátumot.', 'error'); }
+      } catch (e) {
+        console.error('Kezdő dátum mentési hiba:', e);
+        const reason = e && typeof e.message === 'string' ? e.message : 'Ismeretlen adatbázis-hiba.';
+        showToast(`Nem sikerült menteni a kezdő dátumot: ${reason}`, 'error');
+      }
     });
   });
 

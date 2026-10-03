@@ -28,6 +28,15 @@ export async function insertCustomChallenge(userId, fields) {
   return data;
 }
 
+export async function updateCustomChallenge(id, userId, fields) {
+  const { error } = await supabase
+    .from('custom_challenges')
+    .update(fields)
+    .eq('id', id)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
+
 export async function deleteCustomChallenge(id) {
   const { error } = await supabase.from('custom_challenges').delete().eq('id', id);
   if (error) throw error;

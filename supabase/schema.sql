@@ -140,7 +140,44 @@ create policy "reading_log_delete_own" on public.reading_log
   for delete using (auth.uid() = user_id);
 
 -- ----------------------------------------------------------------------------
--- 4. STORAGE bucket a konyvborito kepekhez
+-- 4. CHALLENGE_STATE tabla (kihivasok felhasznalonkenti allapota)
+-- ----------------------------------------------------------------------------
+create table if not exists public.challenge_state (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  challenge_key text not null,
+  start_date date,
+  target_book_id uuid references public.books(id) on delete set null,
+  target_book_ids uuid[] not null default '{}',
+  manual_progress integer not null default 0,
+  reward_claimed boolean not null default false,
+  claimed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, challenge_key)
+);
+
+alter table public.challenge_state enable row level security;
+
+drop policy if exists "challenge_state_select_own" on public.challenge_state;
+create policy "challenge_state_select_own" on public.challenge_state
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "challenge_state_insert_own" on public.challenge_state;
+create policy "challenge_state_insert_own" on public.challenge_state
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "challenge_state_update_own" on public.challenge_state;
+create policy "challenge_state_update_own" on public.challenge_state
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "challenge_state_delete_own" on public.challenge_state;
+create policy "challenge_state_delete_own" on public.challenge_state
+  for delete using (auth.uid() = user_id);
+
+grant select, insert, update, delete on public.challenge_state to authenticated;
+
+-- ----------------------------------------------------------------------------
+-- 5. STORAGE bucket a konyvborito kepekhez
 -- ----------------------------------------------------------------------------
 insert into storage.buckets (id, name, public)
 values ('covers', 'covers', false)

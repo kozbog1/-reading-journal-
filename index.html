@@ -121,6 +121,78 @@
       <label for="yearFilter" class="year-filter-label">Év</label>
       <select id="yearFilter"><option value="mind">Minden év</option></select>
     </div>
+    <button type="button" id="toggleAddBookBtn" class="add-book-toggle">+ Új könyv hozzáadása</button>
+  </div>
+
+  <div class="add-section" id="addBookSection" style="display:none;">
+    <h2 id="addSectionHeading">Új könyv hozzáadása</h2>
+    <div class="form-grid">
+      <div class="field"><label for="f-title">Cím</label><input id="f-title" type="text" placeholder="A könyv címe"></div>
+      <div class="field"><label for="f-author">Szerző</label><input id="f-author" type="text" placeholder="Szerző neve"></div>
+      <div class="field"><label for="f-pages">Oldalszám</label><input id="f-pages" type="number" min="1" placeholder="320"></div>
+    </div>
+    <div class="form-grid row2" style="margin-top:10px;">
+      <div class="field">
+        <label for="f-status">Állapot</label>
+        <select id="f-status">
+          <option value="meglévő">Meglévő</option>
+          <option value="kivansaglista">Kívánságlista</option>
+          <option value="elolvasva">Elolvasva</option>
+        </select>
+        <div class="field" id="f-status-detail-wrap" style="display:none; margin-top:8px;">
+          <label for="f-status-detail">Részletes állapot</label>
+          <select id="f-status-detail"></select>
+        </div>
+        <small class="field-hint">A külön „Elolvasva” állapothoz nem szükséges, hogy a könyv a tulajdonodban legyen.</small>
+      </div>
+      <div class="field">
+        <label for="f-rating">Értékelés</label>
+        <select id="f-rating">
+          <option value="0">— nincs —</option>
+          <option value="1">★</option>
+          <option value="2">★★</option>
+          <option value="3">★★★</option>
+          <option value="4">★★★★</option>
+          <option value="5">★★★★★</option>
+        </select>
+      </div>
+      <div class="field"><label for="f-date">Befejezés dátuma</label><input id="f-date" type="text" inputmode="numeric" maxlength="10" placeholder="ÉÉÉÉ-HH-NN"></div>
+    </div>
+
+    <div class="conditional-fields" id="olvasomFields" style="display:none;">
+      <div class="field"><label for="f-pagesread">Eddig elolvasott oldalak</label><input id="f-pagesread" type="number" min="0" placeholder="0"></div>
+    </div>
+
+    <div class="conditional-fields" id="planFields" style="display:none;">
+      <div class="field">
+        <label for="f-planmonth">Tervezett hónap</label>
+        <select id="f-planmonth"></select>
+      </div>
+      <div class="field"><label for="f-planyear">Tervezett év</label><input id="f-planyear" type="number" placeholder="2026"></div>
+    </div>
+
+    <div class="field" style="margin-top:10px;">
+      <label>Műfaj (több is választható)</label>
+      <div class="genre-checks" id="genreChecks"></div>
+    </div>
+
+    <div class="field" style="margin-top:10px;">
+     <label>Sorozat (több is hozzáadható)</label>
+       <div class="series-input-row">
+      <input id="f-series-input" type="text" placeholder="Sorozat neve…">
+      <input id="f-series-number" type="number" min="1" step="1" placeholder="Sorszám" aria-label="Sorozatrész sorszáma">
+       <button type="button" id="addSeriesBtn" class="submit-btn" style="margin-top:0; white-space:nowrap;">Hozzáadás</button>
+       </div>
+      <div class="genre-checks" id="seriesTags" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="field" style="margin-top:10px;">
+      <label for="f-image">Borító kép</label>
+      <input id="f-image" type="file" accept="image/*">
+      <img id="f-image-preview" alt="Előnézet" style="display:none; margin-top:8px; width:70px; height:auto; border-radius:3px; box-shadow:0 3px 6px rgba(0,0,0,0.3);">
+    </div>
+    <button class="submit-btn" id="addBtn">Hozzáadás a naplóhoz</button>
+    <button type="button" id="cancelEditBtn" class="link-btn" style="display:none; color:var(--paper); text-decoration:underline; margin-left:14px;">Mégse</button>
   </div>
 
   <div class="shelf-section">
@@ -131,14 +203,14 @@
         <div id="searchResults" class="search-dropdown"></div>
       </div>
     </div>
-    <div class="shelf" id="shelf"><div class="shelf-empty">A polc még üres — adj hozzá egy könyvet lent.</div></div>
+    <div class="shelf" id="shelf"><div class="shelf-empty">A polc még üres — adj hozzá egy könyvet a fenti gombbal.</div></div>
   </div>
 
  <button type="button" id="toggleListBtn" class="collapse-toggle">
-  <span id="toggleListLabel">Könyveim elrejtése</span>
-  <span id="toggleListArrow">▲</span>
+  <span id="toggleListLabel">Könyveim megjelenítése</span>
+  <span id="toggleListArrow">▼</span>
  </button>
- <div id="listSectionBody">
+ <div id="listSectionBody" class="collapsed">
 
   <div class="tabs" id="tabs">
     <button class="tab active" data-filter="mind">Mind</button>
@@ -157,6 +229,7 @@
     <select id="genreFilter"><option value="mind">Minden műfaj</option></select>
   </div>
 
+  <div id="seriesFilterNotice"></div>
   <div id="bookList"><div class="loading">Betöltés…</div></div>
   <div id="planView" style="display:none;"></div>
   <div id="tbrView" style="display:none;">
@@ -182,77 +255,6 @@
   <div id="challengesView" style="display:none;"></div>
   <div id="bingoView" style="display:none;"></div>
   </div><!-- /listSectionBody -->
-
-
-  <div class="add-section">
-    <h2 id="addSectionHeading">Új könyv hozzáadása</h2>
-    <div class="form-grid">
-      <div class="field"><label for="f-title">Cím</label><input id="f-title" type="text" placeholder="A könyv címe"></div>
-      <div class="field"><label for="f-author">Szerző</label><input id="f-author" type="text" placeholder="Szerző neve"></div>
-      <div class="field"><label for="f-pages">Oldalszám</label><input id="f-pages" type="number" min="1" placeholder="320"></div>
-    </div>
-    <div class="form-grid row2" style="margin-top:10px;">
-      <div class="field">
-        <label for="f-status">Állapot</label>
-        <select id="f-status">
-          <option value="meglévő">Meglévő</option>
-          <option value="olvasom">Olvasom</option>
-          <option value="elolvasva">Elolvasva</option>
-          <option value="eves_terv">Éves terv</option>
-          <option value="kivansaglista">Kívánságlista</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="f-rating">Értékelés</label>
-        <select id="f-rating">
-          <option value="0">— nincs —</option>
-          <option value="1">★</option>
-          <option value="2">★★</option>
-          <option value="3">★★★</option>
-          <option value="4">★★★★</option>
-          <option value="5">★★★★★</option>
-        </select>
-      </div>
-      <div class="field"><label for="f-date">Befejezés dátuma</label><input id="f-date" type="date"></div>
-    </div>
-
-    <div class="conditional-fields" id="olvasomFields" style="display:none;">
-      <div class="field"><label for="f-pagesread">Eddig elolvasott oldalak</label><input id="f-pagesread" type="number" min="0" placeholder="0"></div>
-    </div>
-
-    <div class="conditional-fields" id="planFields" style="display:none;">
-      <div class="field">
-        <label for="f-planmonth">Tervezett hónap</label>
-        <select id="f-planmonth"></select>
-      </div>
-      <div class="field"><label for="f-planyear">Tervezett év</label><input id="f-planyear" type="number" placeholder="2026"></div>
-    </div>
-
-    <div class="field" style="margin-top:10px;">
-      <label>Műfaj (több is választható)</label>
-      <div class="genre-checks" id="genreChecks"></div>
-    </div>
-
-    <div class="field" style="margin-top:10px;">
-     <label>Sorozat (több is hozzáadható)</label>
-       <div style="display:flex; gap:8px;">
-      <input id="f-series-input" type="text" placeholder="Sorozat neve…" style="flex:1;">
-       <button type="button" id="addSeriesBtn" class="submit-btn" style="margin-top:0; white-space:nowrap;">Hozzáadás</button>
-       </div>
-      <div class="genre-checks" id="seriesTags" style="margin-top:8px;"></div>
-    </div>
-
-    <div class="form-grid" style="margin-top:10px;">
-      <textarea id="f-note" placeholder="Jegyzet vagy kedvenc idézet…"></textarea>
-    </div>
-    <div class="field" style="margin-top:10px;">
-      <label for="f-image">Borító kép</label>
-      <input id="f-image" type="file" accept="image/*">
-      <img id="f-image-preview" alt="Előnézet" style="display:none; margin-top:8px; width:70px; height:auto; border-radius:3px; box-shadow:0 3px 6px rgba(0,0,0,0.3);">
-    </div>
-    <button class="submit-btn" id="addBtn">Hozzáadás a naplóhoz</button>
-    <button type="button" id="cancelEditBtn" class="link-btn" style="display:none; color:var(--paper); text-decoration:underline; margin-left:14px;">Mégse</button>
-  </div>
 
 </div>
 
