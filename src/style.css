@@ -37,7 +37,7 @@
   .wrap{max-width:980px;margin:0 auto;padding:36px 24px 80px;position:relative;background:var(--paper);}
   body[data-theme="t8"] .wrap{background:#06081c;}
   body[data-theme="t6"] .wrap{background:#fcdcf1;}
-  body[data-theme="t1"] .wrap{background:#72b7f3;}
+  body[data-theme="t1"] .wrap{background:#45a8ff;}
   body[data-theme="t4"] .wrap{background:#f7f7f7;}
   body[data-theme="t2"] .wrap{background:#5d9ffc;}
   body[data-theme="t3"] .wrap{background:#404e9c;}

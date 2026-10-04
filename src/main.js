@@ -352,7 +352,7 @@ function pickIcon(text) {
 
 /* ============ THEME ============ */
 const themes = [
-  { id: 't1', text: '#feffe0', base: '#72b7f3' },
+  { id: 't1', text: '#feffe0', base: '#45a8ff' },
   { id: 't2', text: '#7b003d', base: '#5d9ffc' },
   { id: 't3', text: '#ffb3d9', base: '#404e9c' },
   { id: 't4', text: '#333333', base: '#f7f7f7' },
