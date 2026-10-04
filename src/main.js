@@ -70,7 +70,7 @@ function parseSeriesEntry(value) {
 }
 function formatSeriesEntry(value) {
   const { name, number } = parseSeriesEntry(value);
-  return number ? `${name} ${number}.` : name;
+  return number !== null ? `${name} ${number}.` : name;
 }
 function seriesNameKey(value) {
   return String(value || '').trim().toLocaleLowerCase('hu-HU');
@@ -669,10 +669,10 @@ function commitSeriesInputs(showEmptyError = false) {
     return true;
   }
   if (!name) { showToast('Add meg a sorozat nevét.', 'error'); nameInput.focus(); return false; }
-  if (numberValue && (!Number.isInteger(number) || number < 1)) {
-    showToast('A sorszám legalább 1 legyen.', 'error'); numberInput.focus(); return false;
+  if (numberValue && (!Number.isInteger(number) || number < 0)) {
+    showToast('A sorszám 0 vagy annál nagyobb egész szám legyen.', 'error'); numberInput.focus(); return false;
   }
-  const value = number ? `${name} ${number}.` : name;
+  const value = number !== null ? `${name} ${number}.` : name;
   const duplicate = pendingSeries.some(item => {
     const parsed = parseSeriesEntry(item);
     return seriesNameKey(parsed.name) === seriesNameKey(name) && parsed.number === number;
