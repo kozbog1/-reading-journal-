@@ -102,7 +102,7 @@ function updateStatusDependentFields() {
   document.getElementById('olvasomFields').style.display = selection === 'olvasom' ? 'grid' : 'none';
   document.getElementById('planFields').style.display = selection.startsWith('eves_terv_') ? 'grid' : 'none';
 }
-const GENRES = ['Romantikus', 'Thriller', 'Krimi', 'Horror', 'Fantasy', 'Erotikus', 'Sci-fi', 'Ifjúsági', 'Ismeretterjesztő', 'Önfejlesztő', 'Pszichológia', 'Szépirodalom', 'Történelmi', 'Misztikus', 'Regény', 'Novella', 'Vers', 'Memoár', 'Mese'];
+const GENRES = ['Romantikus', 'Thriller', 'Krimi', 'Horror', 'Fantasy', 'Erotikus', 'Sci-fi', 'Ifjúsági', 'Ismeretterjesztő', 'Önfejlesztő', 'Pszichológia', 'Szépirodalom', 'Történelmi', 'Misztikus', 'Regény', 'Novella', 'Vers', 'Esszé', 'Memoár', 'Mese'];
 const MONTH_NAMES = ['Január', 'Február', 'Március', 'Április', 'Május', 'Június', 'Július', 'Augusztus', 'Szeptember', 'Október', 'November', 'December'];
 
 const TBR_CARDS = [
