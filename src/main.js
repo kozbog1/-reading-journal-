@@ -1049,13 +1049,16 @@ document.getElementById('genreFilter').addEventListener('change', (e) => {
 
 /* ============ RENDER: POLC ============ */
 function renderShelf() {
-  let read = books.filter(b =>
+  const shelfBooks = books.filter(b =>
     b.status === 'meglévő' ||
     b.status === 'tervezem' ||
     b.status === 'olvasom' ||
     b.status === 'elolvasva' ||
     (b.status === 'eves_terv' && !b.fromTbr)
   );
+  // Normál nézetben a kívánságlista nem része a polcnak; kereséskor viszont
+  // az összes mentett könyvet meg kell találni.
+  let read = shelfSearchQuery ? books.slice() : shelfBooks;
   // Kereséskor a teljes saját könyvállományból keressünk, ne csak az éppen
   // kiválasztott év polcán szereplő könyvek között.
   if (!shelfSearchQuery && currentYearFilter !== 'mind') {
@@ -1067,7 +1070,11 @@ function renderShelf() {
     const queryParts = shelfSearchQuery.normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(Boolean);
     read = read.filter(b => {
       const searchable = `${b.title || ''} ${b.author || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('hu-HU').replace(/\s+/g, ' ');
-      return queryParts.every(part => searchable.includes(part));
+      const words = searchable.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+      return queryParts.every(part => searchable.includes(part) || words.some(word => {
+        const prefixLength = Math.min(4, part.length, word.length);
+        return prefixLength >= 4 && word.startsWith(part.slice(0, prefixLength));
+      }));
     });
   }
 
@@ -1098,10 +1105,13 @@ function renderShelf() {
     { status: 'meglévő', label: 'Meglévő' },
     { status: 'elolvasva', label: 'Elolvasva' }
   ];
+  if (shelfSearchQuery) rows.push({ status: 'kivansaglista', label: 'Kívánságlista' });
   shelf.innerHTML = rows.map(row => {
     const rowBooks = read.filter(b => row.status === 'meglévő'
       ? b.status === 'meglévő' || b.status === 'tervezem'
-      : b.status === row.status);
+      : row.status === 'kivansaglista'
+        ? b.status === 'kivansaglista' || (b.status === 'eves_terv' && b.fromTbr)
+        : b.status === row.status);
     if (!rowBooks.length) return '';
     return `<div class="shelf-row"><div class="shelf-row-label">${row.label}</div><div class="shelf-row-books">${rowBooks.map(renderBook).join('')}</div></div>`;
   }).join('');
