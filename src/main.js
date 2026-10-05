@@ -788,6 +788,16 @@ async function addBook() {
   const genres = Array.from(document.querySelectorAll('#genreChecks input:checked')).map(c => c.value);
 
   if (!title) { showToast('Add meg legalább a könyv címét.', 'error'); return; }
+  const normalizeBookIdentity = value => (value || '').normalize('NFC').trim().toLocaleLowerCase('hu-HU').replace(/\s+/g, ' ');
+  const normalizedTitle = normalizeBookIdentity(title);
+  const normalizedAuthor = normalizeBookIdentity(author);
+  const duplicate = books.find(book => book.id !== editingId
+    && normalizeBookIdentity(book.title) === normalizedTitle
+    && normalizeBookIdentity(book.author) === normalizedAuthor);
+  if (duplicate) {
+    showToast(`Ez a könyv már szerepel a naplódban: „${duplicate.title}”${duplicate.author ? ` – ${duplicate.author}` : ''}.`, 'error');
+    return;
+  }
   if (!commitSeriesInputs()) return;
   const series = pendingSeries.slice();
   if (date) {
@@ -1046,16 +1056,18 @@ function renderShelf() {
     b.status === 'elolvasva' ||
     (b.status === 'eves_terv' && !b.fromTbr)
   );
-  if (currentYearFilter !== 'mind') {
+  // Kereséskor a teljes saját könyvállományból keressünk, ne csak az éppen
+  // kiválasztott év polcán szereplő könyvek között.
+  if (!shelfSearchQuery && currentYearFilter !== 'mind') {
     read = read.filter(b => b.status === 'eves_terv'
       ? b.plannedYear === parseInt(currentYearFilter)
       : b.status !== 'elolvasva' || getYear(b.date) === parseInt(currentYearFilter));
   }
   if (shelfSearchQuery) {
+    const queryParts = shelfSearchQuery.normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(Boolean);
     read = read.filter(b => {
-      const title = (b.title || '').toLowerCase().replace(/\s+/g, ' ');
-      const author = (b.author || '').toLowerCase().replace(/\s+/g, ' ');
-      return title.includes(shelfSearchQuery) || author.includes(shelfSearchQuery);
+      const searchable = `${b.title || ''} ${b.author || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('hu-HU').replace(/\s+/g, ' ');
+      return queryParts.every(part => searchable.includes(part));
     });
   }
 
