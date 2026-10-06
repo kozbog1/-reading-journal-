@@ -352,10 +352,10 @@ function pickIcon(text) {
 
 /* ============ THEME ============ */
 const themes = [
-  { id: 't7', name: 'Szilva', text: '#f4edf7', accent: '#bde895', onAccent: '#202817', base: '#430e4a' },
-  { id: 't3', name: 'Indigó', text: '#f7f7ff', accent: '#ffb3d9', onAccent: '#30152a', base: '#404e9c' },
-  { id: 't4', name: 'Világos', text: '#25243a', accent: '#404e9c', onAccent: '#ffffff', base: '#f7f7f7' },
-  { id: 't8', name: 'Éjkék', text: '#f7f7f7', accent: '#e87305', onAccent: '#06081c', base: '#06081c' }
+  { id: 't7', name: 'Szilva', text: '#f4edf7', accent: '#bde895', activity: '#bde895', onAccent: '#202817', base: '#430e4a' },
+  { id: 't3', name: 'Indigó', text: '#f7f7ff', accent: '#ffb3d9', activity: '#ffb3d9', onAccent: '#30152a', base: '#404e9c' },
+  { id: 't4', name: 'Világos', text: '#25243a', accent: '#404e9c', activity: '#333333', onAccent: '#ffffff', base: '#f7f7f7' },
+  { id: 't8', name: 'Éjkék', text: '#f7f7f7', accent: '#e87305', activity: '#e87305', onAccent: '#06081c', base: '#06081c' }
 ];
 let currentTheme = 't4';
 
@@ -406,10 +406,10 @@ function applyTheme(themeId) {
   const c = `${inkRgb.r},${inkRgb.g},${inkRgb.b}`;
   root.setProperty('--shelf-shadow-soft', `rgba(${c}, 0.12)`);
   root.setProperty('--shelf-shadow-strong', `rgba(${c}, 0.35)`);
-  root.setProperty('--activity-empty', mix(theme.base, theme.text, 0.08));
-  root.setProperty('--activity-light', mix(theme.text, theme.base, 0.5));
-  root.setProperty('--activity-mid', theme.text);
-  root.setProperty('--activity-dark', mix(theme.text, '#000000', 0.4));
+  root.setProperty('--activity-empty', mix(theme.base, theme.activity, 0.08));
+  root.setProperty('--activity-light', mix(theme.activity, theme.base, 0.5));
+  root.setProperty('--activity-mid', theme.activity);
+  root.setProperty('--activity-dark', mix(theme.activity, '#000000', 0.4));
   root.setProperty('--vignette-color', `rgba(${c}, 0.045)`);
 
   root.setProperty('--pattern-image', 'none');
