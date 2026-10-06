@@ -527,6 +527,7 @@
 }
 .auth-brand{display:flex;flex-direction:column;align-items:center;gap:4px;margin-bottom:18px;}
 .auth-logo{width:144px;height:144px;object-fit:contain;}
+.auth-brand,.auth-title{width:100%;text-align:center;}
 .auth-title{
   font-family:'Playball', cursive;
   font-size:2.6rem;
@@ -826,6 +827,8 @@
 .account-bar{max-width:1120px; padding:14px 24px 0;}
 .wrap{isolation:isolate;}
 header{border-bottom:1px solid var(--border-color); padding:14px 0 24px; margin-bottom:24px;}
+.wrap > header > div:not(.date-today){width:100%;text-align:center;}
+.wrap > header h1{width:100%;text-align:center;}
 .date-today{top:12px;}
 .theme-picker-vertical{position:relative;top:auto;right:auto;width:fit-content;flex-direction:row;margin:0 0 20px auto;gap:10px;padding:10px;border:1px solid var(--border-color);border-radius:18px;background:var(--surface);box-shadow:0 10px 28px rgba(0,0,0,.12);}
 .swatch{width:24px;height:24px;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border-color);transition:transform .18s ease,box-shadow .18s ease;}
