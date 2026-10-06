@@ -352,14 +352,10 @@ function pickIcon(text) {
 
 /* ============ THEME ============ */
 const themes = [
-  { id: 't1', text: '#feffe0', base: '#45a8ff' },
-  { id: 't2', text: '#7b003d', base: '#5d9ffc' },
-  { id: 't3', text: '#ffb3d9', base: '#404e9c' },
-  { id: 't4', text: '#333333', base: '#f7f7f7' },
-  { id: 't5', text: '#f5e9d0', base: '#bf2c56' },
-  { id: 't6', text: '#fa6a39', base: '#fcdcf1' },
-  { id: 't7', text: '#bde895', base: '#430e4a' },
-  { id: 't8', text: '#e87305', base: '#06081c' }
+  { id: 't7', name: 'Szilva', text: '#f4edf7', accent: '#bde895', onAccent: '#202817', base: '#430e4a' },
+  { id: 't3', name: 'Indigó', text: '#f7f7ff', accent: '#ffb3d9', onAccent: '#30152a', base: '#404e9c' },
+  { id: 't4', name: 'Világos', text: '#25243a', accent: '#404e9c', onAccent: '#ffffff', base: '#f7f7f7' },
+  { id: 't8', name: 'Éjkék', text: '#f7f7f7', accent: '#e87305', onAccent: '#06081c', base: '#06081c' }
 ];
 let currentTheme = 't4';
 
@@ -377,72 +373,14 @@ function mix(hexA, hexB, amt) {
   return rgbToHex(a.r + (b.r - a.r) * amt, a.g + (b.g - a.g) * amt, a.b + (b.b - a.b) * amt);
 }
 
-function svgDataUrl(svgString) {
-  return `url("data:image/svg+xml,${encodeURIComponent(svgString)}")`;
-}
-function dotPattern(hex, opacity, radius, spacing) {
-  const { r, g, b } = hexToRgb(hex);
-  const c = `${r},${g},${b}`;
-  return {
-    image: `radial-gradient(circle, rgba(${c},${opacity}) ${radius}px, transparent ${radius}px)`,
-    size: `${spacing}px ${spacing}px`
-  };
-}
-function leafPattern(hex) { return dotPattern(hex, 0.16, 1.6, 26); }
-function cloudPattern(hex) { return dotPattern(hex, 0.13, 2.2, 40); }
-function starsPattern(hex) {
-  const { r, g, b } = hexToRgb(hex);
-  const c = `${r},${g},${b}`;
-  const image = `radial-gradient(circle at 15% 25%, rgba(${c},0.55) 1px, transparent 1px), radial-gradient(circle at 70% 15%, rgba(${c},0.4) 1.3px, transparent 1.3px), radial-gradient(circle at 45% 65%, rgba(${c},0.45) 1px, transparent 1px), radial-gradient(circle at 85% 75%, rgba(${c},0.35) 1.2px, transparent 1.2px), radial-gradient(circle at 25% 85%, rgba(${c},0.4) 1px, transparent 1px)`;
-  const size = '150px 150px, 150px 150px, 150px 150px, 150px 150px, 150px 150px';
-  return { image, size };
-}
-function papyrusPattern(hex) {
-  const { r, g, b } = hexToRgb(hex);
-  const rf = (r / 255).toFixed(3), gf = (g / 255).toFixed(3), bf = (b / 255).toFixed(3);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 ${rf}  0 0 0 0 ${gf}  0 0 0 0 ${bf}  0 0 0 0.12 0"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>`;
-  return { image: svgDataUrl(svg), size: '200px 200px' };
-}
-function crosshatchPattern(hex) {
-  const { r, g, b } = hexToRgb(hex);
-  const c = `${r},${g},${b}`;
-  const image = `repeating-linear-gradient(45deg, rgba(${c},0.07) 0, rgba(${c},0.07) 1px, transparent 1px, transparent 13px), repeating-linear-gradient(-45deg, rgba(${c},0.07) 0, rgba(${c},0.07) 1px, transparent 1px, transparent 13px)`;
-  return { image, size: 'auto, auto' };
-}
-function flowerPattern(hex) {
-  const orange = '#FF7A1A';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44"><g fill="${orange}" fill-opacity="0.4" transform="translate(22,22)"><circle cx="0" cy="-9" r="6"/><circle cx="8.6" cy="-2.8" r="6"/><circle cx="5.3" cy="7.3" r="6"/><circle cx="-5.3" cy="7.3" r="6"/><circle cx="-8.6" cy="-2.8" r="6"/><circle cx="0" cy="0" r="4" fill-opacity="0.6"/></g></svg>`;
-  return { image: svgDataUrl(svg), size: '44px 44px' };
-}
-function spellPattern(hex) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><g fill="${hex}" fill-opacity="0.3"><path d="M22 8l3.4 13.6L39 25l-13.6 3.4L22 42l-3.4-13.6L5 25l13.6-3.4z"/><path d="M60 40l2.4 9.6L72 52l-9.6 2.4L60 64l-2.4-9.6L48 52l9.6-2.4z"/></g></svg>`;
-  return { image: svgDataUrl(svg), size: '80px 80px' };
-}
-function halloweenPattern() { return dotPattern('#FFA85C', 0.4, 2.4, 34); }
-
-const THEME_PATTERNS = {
-  t1: (hex) => leafPattern(hex),
-  t2: (hex) => cloudPattern(hex),
-  t3: (hex) => starsPattern(hex),
-  t4: (hex) => papyrusPattern(hex),
-  t5: (hex) => crosshatchPattern(hex),
-  t6: (hex) => flowerPattern(hex),
-  t7: (hex) => spellPattern(hex),
-  t8: (hex) => halloweenPattern(hex)
-};
-
 function applyTheme(themeId) {
   const theme = themes.find(t => t.id === themeId) || themes[0];
   currentTheme = theme.id;
   const root = document.documentElement.style;
   document.body.dataset.theme = theme.id;
   const pageWallpaper = {
-    t1: "url('/sky-bg.png')",
-    t2: "url('/blue-glitter-bg.png')",
     t3: "url('/galaxy-bg.png')",
     t4: "url('/monochrome-bg.png')",
-    t5: "url('/pink-waves-bg.png')",
-    t6: "url('/flower-bg.png')",
     t7: "url('/neon-stars-bg.png')",
     t8: "url('/halloween-bg.png')"
   }[theme.id] || 'none';
@@ -452,11 +390,17 @@ function applyTheme(themeId) {
   root.setProperty('--paper-dark', mix(theme.base, theme.text, 0.12));
   root.setProperty('--ink', theme.text);
   root.setProperty('--ink-soft', theme.text);
-  root.setProperty('--burgundy', theme.text);
-  root.setProperty('--burgundy-deep', theme.text);
-  root.setProperty('--gold', theme.text);
-  root.setProperty('--gold-bright', theme.text);
-  root.setProperty('--forest', theme.text);
+  root.setProperty('--accent', theme.accent);
+  root.setProperty('--on-accent', theme.onAccent);
+  root.setProperty('--accent-soft', mix(theme.base, theme.accent, 0.18));
+  root.setProperty('--surface', mix(theme.base, theme.text, 0.045));
+  root.setProperty('--surface-raised', mix(theme.base, theme.text, 0.085));
+  root.setProperty('--border-color', `rgba(${hexToRgb(theme.text).r},${hexToRgb(theme.text).g},${hexToRgb(theme.text).b},0.16)`);
+  root.setProperty('--burgundy', theme.accent);
+  root.setProperty('--burgundy-deep', theme.accent);
+  root.setProperty('--gold', theme.accent);
+  root.setProperty('--gold-bright', theme.accent);
+  root.setProperty('--forest', theme.accent);
 
   const inkRgb = hexToRgb(theme.text);
   const c = `${inkRgb.r},${inkRgb.g},${inkRgb.b}`;
@@ -468,15 +412,8 @@ function applyTheme(themeId) {
   root.setProperty('--activity-dark', mix(theme.text, '#000000', 0.4));
   root.setProperty('--vignette-color', `rgba(${c}, 0.045)`);
 
-  const patternFn = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8'].includes(theme.id) ? null : THEME_PATTERNS[theme.id];
-  if (patternFn) {
-    const pattern = patternFn(theme.text);
-    root.setProperty('--pattern-image', pattern.image);
-    root.setProperty('--pattern-size', pattern.size);
-  } else {
-    root.setProperty('--pattern-image', 'none');
-    root.setProperty('--pattern-size', 'auto');
-  }
+  root.setProperty('--pattern-image', 'none');
+  root.setProperty('--pattern-size', 'auto');
 
   document.querySelectorAll('.swatch').forEach(s => {
     s.classList.toggle('active', s.dataset.theme === theme.id);
@@ -487,7 +424,7 @@ function applyTheme(themeId) {
 function renderThemePicker() {
   const picker = document.getElementById('themePicker');
   picker.innerHTML = themes.map(t =>
-    `<button class="swatch ${t.id === currentTheme ? 'active' : ''}" data-theme="${t.id}" style="background:${t.base}; --sw-text:${t.text};" aria-label="Szín: ${t.id}"></button>`
+    `<button class="swatch ${t.id === currentTheme ? 'active' : ''}" data-theme="${t.id}" style="background:${t.base}; --sw-text:${t.accent};" aria-label="${t.name} téma: ${t.base}" title="${t.name}"></button>`
   ).join('');
   picker.querySelectorAll('.swatch').forEach(btn => {
     btn.addEventListener('click', async () => {
