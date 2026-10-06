@@ -893,6 +893,7 @@ input:focus,select:focus,textarea:focus,#searchInput:focus{outline:3px solid col
 .challenge-progress-bar{border-radius:999px;background:var(--accent);}
 .challenge-claim-btn,.challenge-manual-btn,.challenge-inline-actions button,.challenge-edit-actions button{border-radius:999px;}
 .toast{border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.2);}
+.auth-submit,.auth-submit:hover{background:#fcfaac;color:#85400c;border-color:#fcfaac;}
 
 @media(max-width:760px){
   .wrap{margin:10px;padding:24px 16px 50px;border-radius:20px;}
