@@ -525,6 +525,7 @@
   background:#673916;
   padding:28px 26px;
 }
+.auth-logo{width:56px;height:56px;flex:0 0 56px;object-fit:cover;border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.3);}
 .auth-title{
   font-family:'Playball', cursive;
   font-size:2.6rem;
