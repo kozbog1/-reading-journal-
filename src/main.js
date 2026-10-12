@@ -63,14 +63,17 @@ function selectionFromBook(book) {
 }
 function parseSeriesEntry(value) {
   const text = String(value || '').trim();
-  const match = text.match(/^(.*?)(?:\s+#?(\d+))\.?$/);
+  const match = text.match(/^(.*?)(?:\s+#?(\d+(?:[.,]\d+)?))\.?$/);
   return match && match[1].trim()
-    ? { name: match[1].trim(), number: parseInt(match[2], 10) }
+    ? { name: match[1].trim(), number: Number(match[2].replace(',', '.')) }
     : { name: text, number: null };
+}
+function formatSeriesNumber(number) {
+  return new Intl.NumberFormat('hu-HU', { useGrouping: false, maximumFractionDigits: 10 }).format(number);
 }
 function formatSeriesEntry(value) {
   const { name, number } = parseSeriesEntry(value);
-  return number !== null ? `${name} ${number}.` : name;
+  return number !== null ? `${name} ${formatSeriesNumber(number)}.` : name;
 }
 function seriesNameKey(value) {
   return String(value || '').trim().toLocaleLowerCase('hu-HU');
@@ -379,17 +382,17 @@ function applyTheme(themeId) {
   const root = document.documentElement.style;
   document.body.dataset.theme = theme.id;
   const pageWallpaper = {
-    t3: "url('/galaxy-bg.png')",
-    t4: "url('/monochrome-bg.png')",
-    t7: "url('/neon-stars-bg.png')",
-    t8: "url('/halloween-bg.png')"
+    t3: "url('/galaxy-bg.webp')",
+    t4: "url('/monochrome-bg.webp')",
+    t7: "url('/neon-stars-bg.webp')",
+    t8: "url('/halloween-bg.webp')"
   }[theme.id] || 'none';
   root.setProperty('--page-wallpaper', pageWallpaper);
 
   root.setProperty('--paper', theme.base);
   root.setProperty('--paper-dark', mix(theme.base, theme.text, 0.12));
-  root.setProperty('--ink', theme.text);
-  root.setProperty('--ink-soft', theme.text);
+  root.setProperty('--ink', theme.accent);
+  root.setProperty('--ink-soft', theme.accent);
   root.setProperty('--accent', theme.accent);
   root.setProperty('--on-accent', theme.onAccent);
   root.setProperty('--accent-soft', mix(theme.base, theme.accent, 0.18));
@@ -505,36 +508,37 @@ async function loadBooksAndLog() {
     books = [];
   }
 
-  await mapWithConcurrencyLimit(books, 5, async (b) => {
+  const coverUrlsPromise = mapWithConcurrencyLimit(books, 5, async (b) => {
     b.coverUrl = b.coverPath ? await coverService.getCoverUrl(b.coverPath) : null;
   });
 
-  try {
-    const result = await logService.loadReadingLog(currentUser.id);
+  const readingLogTask = logService.loadReadingLog(currentUser.id).then((result) => {
     readingLog = result.log;
     readingLogMeta = result.meta;
-  } catch (e) {
+  }).catch((e) => {
     console.error(e);
     showToast('Nem sikerült betölteni az olvasási naplót.', 'error');
     readingLog = {};
     readingLogMeta = {};
-  }
+  });
 
-  try {
-    challengeState = await challengeService.loadChallengeState(currentUser.id);
-  } catch (e) {
+  const challengeStateTask = challengeService.loadChallengeState(currentUser.id).then((result) => {
+    challengeState = result;
+  }).catch((e) => {
     console.error(e);
     challengeState = {};
-  }
+  });
 
-  try {
-    customChallenges = await challengeService.loadCustomChallenges(currentUser.id);
-  } catch (e) {
+  const customChallengesTask = challengeService.loadCustomChallenges(currentUser.id).then((result) => {
+    customChallenges = result;
+  }).catch((e) => {
     console.error(e);
     customChallenges = [];
-  }
+  });
 
+  await Promise.all([readingLogTask, challengeStateTask, customChallengesTask]);
   render();
+  coverUrlsPromise.then(render).catch((e) => console.error('Nem sikerült betölteni néhány borítókép URL-jét:', e));
 }
 
 async function deleteBook(id) {
@@ -600,16 +604,17 @@ function commitSeriesInputs(showEmptyError = false) {
   const numberInput = document.getElementById('f-series-number');
   const name = nameInput.value.trim();
   const numberValue = numberInput.value.trim();
-  const number = numberValue ? parseInt(numberValue, 10) : null;
+  const normalizedNumber = numberValue.replace(',', '.');
+  const number = numberValue ? Number(normalizedNumber) : null;
   if (!name && !numberValue) {
     if (showEmptyError) { showToast('Add meg a sorozat nevét.', 'error'); nameInput.focus(); return false; }
     return true;
   }
   if (!name) { showToast('Add meg a sorozat nevét.', 'error'); nameInput.focus(); return false; }
-  if (numberValue && (!Number.isInteger(number) || number < 0)) {
-    showToast('A sorszám 0 vagy annál nagyobb egész szám legyen.', 'error'); numberInput.focus(); return false;
+  if (numberValue && (!/^\d+(?:\.\d+)?$/.test(normalizedNumber) || !Number.isFinite(number) || number < 0)) {
+    showToast('A sorszám 0 vagy annál nagyobb szám legyen.', 'error'); numberInput.focus(); return false;
   }
-  const value = number !== null ? `${name} ${number}.` : name;
+  const value = number !== null ? `${name} ${formatSeriesNumber(number)}.` : name;
   const duplicate = pendingSeries.some(item => {
     const parsed = parseSeriesEntry(item);
     return seriesNameKey(parsed.name) === seriesNameKey(name) && parsed.number === number;
@@ -985,6 +990,22 @@ document.getElementById('genreFilter').addEventListener('change', (e) => {
 });
 
 /* ============ RENDER: POLC ============ */
+function showBooksForSeries(seriesName) {
+  currentSeriesFilter = seriesName;
+  currentFilter = 'mind';
+  currentYearFilter = 'mind';
+  currentGenreFilter = 'mind';
+  document.getElementById('yearFilter').value = 'mind';
+  document.getElementById('genreFilter').value = 'mind';
+  document.querySelectorAll('#tabs .tab').forEach(tab => tab.classList.toggle('active', tab.dataset.filter === 'mind'));
+  const listBody = document.getElementById('listSectionBody');
+  listBody.classList.remove('collapsed');
+  document.getElementById('toggleListLabel').textContent = 'Könyveim elrejtése';
+  document.getElementById('toggleListArrow').textContent = '▲';
+  updateTabViews();
+  document.getElementById('toggleListBtn').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function renderShelf() {
   const shelfBooks = books.filter(b =>
     b.status === 'meglévő' ||
@@ -1023,14 +1044,19 @@ function renderShelf() {
 
   const renderBook = b => {
     const cover = b.coverUrl
-      ? `<img src="${b.coverUrl}" alt="${escapeHtml(b.title)} borító">`
+      ? `<img src="${b.coverUrl}" alt="${escapeHtml(b.title)} borító" loading="lazy" decoding="async">`
       : `<span class="shelf-cover-fallback">${escapeHtml((b.title || '?').trim().charAt(0).toUpperCase())}</span>`;
     const stars = [1, 2, 3, 4, 5].map(i =>
       `<span class="shelf-star ${i <= b.rating ? 'filled' : ''}" data-book-id="${b.id}" data-rate="${i}">★</span>`
     ).join('');
+    const seriesTags = (b.series || []).map(entry => {
+      const series = parseSeriesEntry(entry);
+      return `<button type="button" class="series-filter-tag shelf-series-tag" data-series-filter="${escapeHtml(series.name)}" aria-pressed="${seriesNameKey(currentSeriesFilter) === seriesNameKey(series.name)}">📚 ${escapeHtml(formatSeriesEntry(entry))}</button>`;
+    }).join('');
     return `
     <div class="shelf-book">
       <div class="shelf-stars">${stars}</div>
+      ${seriesTags ? `<div class="shelf-series-tags">${seriesTags}</div>` : ''}
       <div class="shelf-cover" style="${!b.coverUrl ? `background:${spineColor(b.id)};` : ''}">${cover}</div>
       <div class="shelf-book-title" data-edit-id="${b.id}">${escapeHtml(b.title)}</div>
       ${b.author ? `<div class="shelf-book-author">${escapeHtml(b.author)}</div>` : ''}
@@ -1065,6 +1091,8 @@ async function setRating(id, value) {
   catch (e) { console.error(e); showToast('Nem sikerült menteni az értékelést.', 'error'); }
 }
 document.getElementById('shelf').addEventListener('click', (e) => {
+  const seriesTag = e.target.closest('.shelf-series-tag');
+  if (seriesTag) { showBooksForSeries(seriesTag.dataset.seriesFilter); return; }
   const star = e.target.closest('.shelf-star');
   if (star) { setRating(star.dataset.bookId, parseInt(star.dataset.rate)); return; }
   const titleEl = e.target.closest('[data-edit-id]');
@@ -1116,7 +1144,7 @@ function renderList() {
     }).join(' ');
     const wishlistCover = isWishlistBook ? `
       <div class="wishlist-cover">
-        ${b.coverUrl ? `<img src="${b.coverUrl}" alt="${escapeHtml(b.title)} borító">` : `<span>${escapeHtml((b.title || '?').trim().charAt(0).toUpperCase())}</span>`}
+        ${b.coverUrl ? `<img src="${b.coverUrl}" alt="${escapeHtml(b.title)} borító" loading="lazy" decoding="async">` : `<span>${escapeHtml((b.title || '?').trim().charAt(0).toUpperCase())}</span>`}
       </div>` : '';
     const progressHtml = b.status === 'olvasom' ? `
       <div class="progress-row">
@@ -1159,16 +1187,7 @@ function renderList() {
     });
   });
   listEl.querySelectorAll('[data-series-filter]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      currentSeriesFilter = btn.dataset.seriesFilter;
-      currentFilter = 'mind';
-      currentYearFilter = 'mind';
-      currentGenreFilter = 'mind';
-      document.getElementById('yearFilter').value = 'mind';
-      document.getElementById('genreFilter').value = 'mind';
-      document.querySelectorAll('#tabs .tab').forEach(tab => tab.classList.toggle('active', tab.dataset.filter === 'mind'));
-      renderList();
-    });
+    btn.addEventListener('click', () => showBooksForSeries(btn.dataset.seriesFilter));
   });
   listEl.querySelectorAll('[data-progress-id]').forEach(inp => {
     inp.addEventListener('change', async () => {
@@ -1206,7 +1225,10 @@ function renderPlanView() {
       const monthNum = idx + 1;
       const monthBooks = yearBooks.filter(b => b.plannedMonth === monthNum);
       const totalPages = monthBooks.reduce((s, b) => s + (b.pages || 0), 0);
-      const bookItems = monthBooks.map(b => `<div class="plan-book-item${b.status === 'elolvasva' ? ' is-read' : ''}">${escapeHtml(b.title)}${b.author ? ` <span class="pb-author">— ${escapeHtml(b.author)}</span>` : ''}</div>`).join('');
+      const bookItems = monthBooks.map(b => `<label class="plan-book-item${b.status === 'elolvasva' ? ' is-read' : ''}">
+        <input class="plan-book-complete" type="checkbox" data-plan-book-id="${escapeHtml(b.id)}" ${b.status === 'elolvasva' ? 'checked' : ''} aria-label="${b.status === 'elolvasva' ? 'Olvasottként jelölés visszavonása' : 'Könyv olvasottként jelölése'}">
+        <span>${escapeHtml(b.title)}${b.author ? ` <span class="pb-author">— ${escapeHtml(b.author)}</span>` : ''}</span>
+      </label>`).join('');
       return `
       <div class="plan-month">
         <div class="plan-month-header">
@@ -1230,6 +1252,27 @@ function renderPlanView() {
   document.getElementById('planYearFilter').addEventListener('change', e => {
     currentPlanYear = parseInt(e.target.value);
     renderPlanView();
+  });
+  el.querySelectorAll('[data-plan-book-id]').forEach(checkbox => {
+    checkbox.addEventListener('change', async () => {
+      const book = books.find(item => item.id === checkbox.dataset.planBookId);
+      if (!book) return;
+      const previousStatus = book.status;
+      book.status = checkbox.checked ? 'elolvasva' : 'eves_terv';
+      render();
+      try {
+        const updated = await bookService.updateBook(book.id, book, currentUser.id);
+        updated.coverUrl = book.coverUrl || null;
+        const bookIndex = books.findIndex(item => item.id === book.id);
+        if (bookIndex !== -1) books[bookIndex] = updated;
+        render();
+      } catch (e) {
+        console.error(e);
+        book.status = previousStatus;
+        render();
+        showToast('Nem sikerült elmenteni az olvasási állapotot.', 'error');
+      }
+    });
   });
 }
 

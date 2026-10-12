@@ -515,7 +515,7 @@
   align-items:center;
   justify-content:center;
   padding:24px;
-  background:#08050a url('/login-library-bg.png') center / cover fixed no-repeat;
+  background:#08050a url('/login-library-bg.webp') center / cover fixed no-repeat;
   color:#fcfaac;
 }
 .auth-card{
@@ -825,10 +825,10 @@
 /* Modern editorial interface: soft surfaces, clearer hierarchy and calmer spacing. */
 .account-bar{max-width:1120px; padding:14px 24px 0;}
 .wrap{isolation:isolate;}
-header{border-bottom:1px solid var(--border-color); padding:14px 0 24px; margin-bottom:24px;}
+header{border-bottom:1px solid var(--border-color); padding:14px 0 24px; margin-bottom:24px; min-height:190px; justify-content:center;}
 .wrap > header > div:not(.date-today){width:100%;text-align:center;}
-.wrap > header h1{width:100%;text-align:center;}
-.date-today{top:100px;right:24px;}
+.wrap > header h1{width:100%;text-align:center;transform:none;margin-top:20px;}
+.date-today{top:104px;right:24px;}
 .theme-picker-vertical{position:absolute;top:22px;right:24px;width:fit-content;flex-direction:row;margin:0;gap:10px;padding:10px;border:1px solid var(--border-color);border-radius:18px;background:var(--surface);box-shadow:0 10px 28px rgba(0,0,0,.12);}
 .swatch{width:24px;height:24px;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border-color);transition:transform .18s ease,box-shadow .18s ease;}
 .swatch:hover{transform:scale(1.12);}
@@ -843,7 +843,8 @@ header{border-bottom:1px solid var(--border-color); padding:14px 0 24px; margin-
 .activity-section,.shelf-section,#listSectionBody,.plan-section,.tbr-section{background:var(--surface);border:1px solid var(--border-color);border-radius:22px;padding:22px;margin:0 0 20px;box-shadow:0 10px 30px rgba(0,0,0,.055);}
 .activity-header{margin-bottom:14px;}
 .activity-grid{gap:5px;}
-.activity-day{border:0;border-radius:7px;width:25px;height:25px;}
+.activity-day{border:1px solid #fff;border-radius:7px;width:25px;height:25px;}
+.activity-day.dark{border-color:#fff;}
 .activity-day:hover{transform:translateY(-2px) scale(1.05);}
 .activity-popover{border:1px solid var(--border-color);border-radius:16px;background:var(--surface);box-shadow:0 20px 60px rgba(0,0,0,.22);}
 .activity-popover input,.activity-popover button{border-radius:9px;}
@@ -873,7 +874,11 @@ header{border-bottom:1px solid var(--border-color); padding:14px 0 24px; margin-
 .status-pill{background:var(--accent-soft);color:var(--ink);border:1px solid var(--border-color);}
 .link-btn:hover{text-decoration:underline;}
 .series-filter-tag,.series-filter-notice button{border-radius:999px;}
+.shelf-series-tags{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;margin:0 0 8px;}
+.shelf-series-tag{max-width:100%;white-space:normal;overflow-wrap:anywhere;}
 .plan-month-header{border-color:var(--border-color);}
+.plan-book-item{display:flex;align-items:flex-start;gap:8px;cursor:pointer;}
+.plan-book-complete{width:auto;flex:0 0 auto;margin:2px 0 0;accent-color:var(--accent);}
 .tbr-draw-tile,.tbr-card-back,.tbr-card-front{border-radius:22px;}
 .add-section{background:var(--surface);color:var(--ink);border:1px solid var(--border-color);border-radius:22px;padding:24px;box-shadow:0 12px 30px rgba(0,0,0,.07);}
 .add-section h2{color:var(--accent);}
@@ -897,10 +902,33 @@ input:focus,select:focus,textarea:focus,#searchInput:focus{outline:3px solid col
 .toast{border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.2);}
 .auth-submit,.auth-submit:hover{background:#fcfaac;color:#85400c;border-color:#fcfaac;}
 
+/* Match all text in the themed journal to the title's secondary theme color. */
+#appScreen :not(.swatch){color:var(--accent)!important;}
+#appScreen .activity-popover button.primary,
+#appScreen .add-book-toggle,
+#appScreen .tab.active,
+#appScreen .link-btn.danger,
+#appScreen .series-filter-tag:hover,
+#appScreen .series-filter-tag[aria-pressed="true"],
+#appScreen .tbr-draw-tile,
+#appScreen .tbr-card-back,
+#appScreen .challenge-cat-btn.active,
+#appScreen .challenge-card.completed,
+#appScreen .challenge-unlock-btn,
+#appScreen .add-challenge-btn,
+#appScreen .submit-btn,
+#appScreen #drawAgainBtn,
+#appScreen #saveCustomChallengeBtn{
+  background:var(--accent-soft)!important;
+  border-color:var(--accent)!important;
+}
+#appScreen .submit-btn:hover{background:var(--accent-soft)!important;}
+#appScreen .add-book-toggle{color:var(--accent)!important;}
+
 @media(max-width:760px){
   .wrap{margin:10px;padding:24px 16px 50px;border-radius:20px;}
   .theme-picker-vertical{position:static;top:auto;right:auto;margin:0 0 16px auto;gap:7px;padding:8px;}
-  .date-today{top:80px;right:16px;}
+  .date-today{top:104px;right:16px;}
   .stats-year-row{grid-template-columns:1fr;}
   .stats-year-select-wrap{flex-direction:row;align-items:center;}
   #statsYearFilter{width:auto;}
