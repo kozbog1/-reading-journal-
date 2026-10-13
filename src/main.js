@@ -915,8 +915,31 @@ function openActivityPopover(dayEl) {
   pop.style.top = top + 'px';
   pop.style.left = left + 'px';
 
+  const deleteEntry = async () => {
+    const previousPages = readingLog[date];
+    const previousMeta = readingLogMeta[date];
+    delete readingLog[date];
+    delete readingLogMeta[date];
+    renderActivity();
+    try {
+      await logService.deleteReadingLogEntry(currentUser.id, date);
+    } catch (e) {
+      console.error(e);
+      if (previousPages !== undefined) readingLog[date] = previousPages;
+      if (previousMeta !== undefined) readingLogMeta[date] = previousMeta;
+      renderActivity();
+      showToast('Nem sikerült törölni a bejegyzést.', 'error');
+    }
+    closeActivityPopover();
+  };
+
   document.getElementById('popSaveBtn').addEventListener('click', async () => {
-    const val = parseInt(document.getElementById('popPagesInput').value);
+    const pagesInput = document.getElementById('popPagesInput').value.trim();
+    if (pagesInput === '') {
+      await deleteEntry();
+      return;
+    }
+    const val = parseInt(pagesInput, 10);
     const minutesVal = parseInt(document.getElementById('popMinutesInput').value);
     const durationMinutes = isNaN(minutesVal) ? 0 : minutesVal;
     if (!isNaN(val) && val >= 0) {
@@ -931,11 +954,7 @@ function openActivityPopover(dayEl) {
   });
 
   document.getElementById('popDeleteBtn').addEventListener('click', async () => {
-    delete readingLog[date];
-    renderActivity();
-    try { await logService.deleteReadingLogEntry(currentUser.id, date); }
-    catch (e) { console.error(e); showToast('Nem sikerült törölni a bejegyzést.', 'error'); }
-    closeActivityPopover();
+    await deleteEntry();
   });
   setTimeout(() => {
     document.addEventListener('click', function outsideClick(e) {
