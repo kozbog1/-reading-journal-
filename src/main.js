@@ -1065,8 +1065,9 @@ function renderShelf() {
     const cover = b.coverUrl
       ? `<img src="${b.coverUrl}" alt="${escapeHtml(b.title)} borító" loading="lazy" decoding="async">`
       : `<span class="shelf-cover-fallback">${escapeHtml((b.title || '?').trim().charAt(0).toUpperCase())}</span>`;
+    const rating = Number(b.rating) || 0;
     const stars = [1, 2, 3, 4, 5].map(i =>
-      `<span class="shelf-star ${i <= b.rating ? 'filled' : ''}" data-book-id="${b.id}" data-rate="${i}">★</span>`
+      `<span class="shelf-star ${i <= rating ? 'filled' : ''}" data-book-id="${b.id}" data-rate="${i}" aria-label="${i} csillag">${i <= rating ? '★' : '☆'}</span>`
     ).join('');
     const seriesTags = (b.series || []).map(entry => {
       const series = parseSeriesEntry(entry);
