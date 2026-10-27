@@ -355,10 +355,10 @@ function pickIcon(text) {
 
 /* ============ THEME ============ */
 const themes = [
-  { id: 't7', name: 'Szilva', text: '#f4edf7', accent: '#bde895', activity: '#bde895', onAccent: '#202817', base: '#430e4a' },
-  { id: 't3', name: 'Indigó', text: '#f7f7ff', accent: '#ffb3d9', activity: '#ffb3d9', onAccent: '#30152a', base: '#404e9c' },
-  { id: 't4', name: 'Világos', text: '#25243a', accent: '#404e9c', activity: '#333333', onAccent: '#ffffff', base: '#f7f7f7' },
-  { id: 't8', name: 'Éjkék', text: '#f7f7f7', accent: '#e87305', activity: '#e87305', onAccent: '#06081c', base: '#06081c' }
+  { id: 't7', name: 'Szilva', text: '#f4edf7', accent: '#ff9e00', activity: '#ff9e00', onAccent: '#202817', base: '#240046' },
+  { id: 't3', name: 'Indigó', text: '#f7f7ff', accent: '#ffafcc', activity: '#ffafcc', onAccent: '#30152a', base: '#03045e' },
+  { id: 't4', name: 'Világos', text: '#25243a', accent: '#03045e', activity: '#333333', onAccent: '#ffffff', base: '#f7f7f7' },
+  { id: 't8', name: 'Éjkék', text: '#f7f7f7', accent: '#e85d04', activity: '#e85d04', onAccent: '#03071e', base: '#03071e' }
 ];
 let currentTheme = 't4';
 
