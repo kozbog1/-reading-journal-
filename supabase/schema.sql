@@ -58,8 +58,8 @@ create table if not exists public.books (
   title text not null,
   author text,
   pages integer default 0,
-  status text not null default 'tervezem'
-    check (status in ('olvasom','elolvasva','tervezem','eves_terv','kivansaglista')),
+  status text not null default 'meglévő'
+    check (status in ('meglévő','olvasom','elolvasva','eves_terv','kivansaglista')),
   rating integer default 0 check (rating between 0 and 5),
   date date,
   pages_read integer default 0,

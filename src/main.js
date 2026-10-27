@@ -98,7 +98,8 @@ function syncStatusDetails(selectedDetail = '') {
 }
 function selectedStatusForBookForm() {
   const category = document.getElementById('f-status').value;
-  return category === 'elolvasva' ? 'elolvasva' : document.getElementById('f-status-detail').value;
+  if (category === 'elolvasva') return 'elolvasva';
+  return document.getElementById('f-status-detail').value || category;
 }
 function updateStatusDependentFields() {
   const selection = selectedStatusForBookForm();
@@ -1925,6 +1926,7 @@ async function initApp() {
     populateGenreChecks();
     populateMonthFilter();
     populateGenreFilter();
+    syncStatusDetails('meglévő');
     appInitialized = true;
   }
   await loadThemeFromProfile();
