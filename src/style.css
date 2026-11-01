@@ -276,15 +276,16 @@
     text-align:center;
   }
   .shelf-book{width:118px; display:flex; flex-direction:column; align-items:center; text-align:center;}
-  .shelf-stars{display:flex; gap:2px; margin-bottom:7px;}
+  .shelf-stars{display:flex; align-items:center; gap:2px; height:18px; margin-bottom:7px;}
   .shelf-star{font-size:0.9rem; line-height:1; color:var(--paper-dark); cursor:pointer; transition:transform 0.1s ease; user-select:none;}
   .shelf-star:hover{transform:scale(1.2);}
   .shelf-star.filled{color:var(--ink);}
   .shelf-cover{width:100px; height:142px; border-radius:3px; overflow:hidden; box-shadow:0 5px 10px rgba(0,0,0,0.28); display:flex; align-items:center; justify-content:center; flex-shrink:0;}
   .shelf-cover img{width:100%; height:100%; object-fit:cover; display:block;}
   .shelf-cover-fallback{font-family:'Playball', cursive; font-size:2.1rem; color:rgba(255,255,255,0.9);}
-  .shelf-book-title{margin-top:9px; font-weight:600; font-size:0.86rem; line-height:1.25;}
-  .shelf-book-author{margin-top:2px; font-size:0.74rem; color:var(--ink); opacity:0.65;}
+  .shelf-book-title{height:2.5em; margin-top:9px; font-weight:600; font-size:0.86rem; line-height:1.25; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;}
+  .shelf-book-author{min-height:1.2em; margin-top:2px; font-size:0.74rem; color:var(--ink); opacity:0.65;}
+  .shelf-book-author.is-empty{visibility:hidden;}
 
   /* Search (inline, dropdown results) */
   .search-wrap{position:relative; flex:0 1 280px; min-width:200px;}
@@ -874,7 +875,7 @@ header{border-bottom:1px solid var(--border-color); padding:14px 0 24px; margin-
 .status-pill{background:var(--accent-soft);color:var(--ink);border:1px solid var(--border-color);}
 .link-btn:hover{text-decoration:underline;}
 .series-filter-tag,.series-filter-notice button{border-radius:999px;}
-.shelf-series-tags{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;margin:0 0 8px;}
+.shelf-series-tags{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;min-height:52px;margin:0 0 8px;overflow:visible;}
 .shelf-series-tag{max-width:100%;white-space:normal;overflow-wrap:anywhere;}
 .plan-month-header{border-color:var(--border-color);}
 .plan-book-item{display:flex;align-items:flex-start;gap:8px;cursor:pointer;}

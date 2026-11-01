@@ -1077,10 +1077,10 @@ function renderShelf() {
     return `
     <div class="shelf-book">
       <div class="shelf-stars">${stars}</div>
-      ${seriesTags ? `<div class="shelf-series-tags">${seriesTags}</div>` : ''}
+      <div class="shelf-series-tags">${seriesTags}</div>
       <div class="shelf-cover" style="${!b.coverUrl ? `background:${spineColor(b.id)};` : ''}">${cover}</div>
       <div class="shelf-book-title" data-edit-id="${b.id}">${escapeHtml(b.title)}</div>
-      ${b.author ? `<div class="shelf-book-author">${escapeHtml(b.author)}</div>` : ''}
+      <div class="shelf-book-author${b.author ? '' : ' is-empty'}">${b.author ? escapeHtml(b.author) : '&nbsp;'}</div>
     </div>`;
   };
   const rows = [
@@ -1099,6 +1099,11 @@ function renderShelf() {
     if (!rowBooks.length) return '';
     return `<div class="shelf-row"><div class="shelf-row-label">${row.label}</div><div class="shelf-row-books">${rowBooks.map(renderBook).join('')}</div></div>`;
   }).join('');
+  shelf.querySelectorAll('.shelf-row').forEach(row => {
+    const seriesSlots = [...row.querySelectorAll('.shelf-series-tags')];
+    const sharedHeight = Math.max(52, ...seriesSlots.map(slot => slot.scrollHeight));
+    seriesSlots.forEach(slot => { slot.style.height = `${sharedHeight}px`; });
+  });
 }
 
 async function setRating(id, value) {
